@@ -92,24 +92,19 @@ export interface ImportResult {
   skippedLeads: ParsedLead[];
 }
 
+/**
+ * Fetches every existing key with no WHERE filter — building a `.in.(...)` filter
+ * out of dozens of full (very long) Google Maps URLs produces a request URL long
+ * enough to get rejected outright (400 Bad Request) once an import has more than
+ * a handful of rows. The leads table is small by design (free-tier CRM, not a
+ * data warehouse), so fetching all keys and intersecting client-side is simpler
+ * and far more robust than trying to keep a hand-built filter string safe.
+ */
 async function findExistingKeys(parsedLeads: ParsedLead[]): Promise<Set<string>> {
   if (parsedLeads.length === 0) return new Set();
 
   const supabase = createClient();
-  const placeIds = parsedLeads.map((l) => l.placeId).filter((id): id is string => id !== null);
-  const mapsUrls = parsedLeads.map((l) => l.mapsUrl);
-
-  const { data: existing, error } = await supabase
-    .from("leads")
-    .select("place_id, maps_url")
-    .or(
-      [
-        placeIds.length > 0 ? `place_id.in.(${placeIds.map((id) => `"${id}"`).join(",")})` : null,
-        `maps_url.in.(${mapsUrls.map((url) => `"${url}"`).join(",")})`,
-      ]
-        .filter(Boolean)
-        .join(","),
-    );
+  const { data: existing, error } = await supabase.from("leads").select("place_id, maps_url");
 
   if (error) throw error;
 
