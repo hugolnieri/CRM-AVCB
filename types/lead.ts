@@ -26,7 +26,12 @@ export interface ParsedLead {
   lastReviewSnippet: string | null;
 }
 
-export interface Lead extends ParsedLead {
+/**
+ * The persisted lead. Note this deliberately drops `status`/`hours` from
+ * ParsedLead — open/closed business-hours text is only useful at import-preview
+ * time and isn't stored (see supabase/migrations/0001_init_schema.sql).
+ */
+export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   id: string;
   pipelineStage: PipelineStage;
   avcbStatus: AvcbStatus;
