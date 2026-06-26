@@ -17,6 +17,7 @@ import { IconFileUpload, IconClipboard } from "@tabler/icons-react";
 import { parseGoogleScraperCsv } from "@/lib/csv/parseGoogleScraperCsv";
 import { importLeads, previewImport } from "@/lib/supabase/queries/leads";
 import { ImportPreviewTable } from "@/components/import/ImportPreviewTable";
+import { getErrorMessage } from "@/lib/errors";
 import type { ParsedLead } from "@/types/lead";
 
 export default function ImportPage() {
@@ -54,7 +55,8 @@ export default function ImportPage() {
       notifications.show({
         color: "red",
         title: "Erro ao processar",
-        message: err instanceof Error ? err.message : "Não foi possível ler o conteúdo.",
+        message: getErrorMessage(err, "Não foi possível ler o conteúdo."),
+        autoClose: false,
       });
     } finally {
       setPreviewing(false);
@@ -79,7 +81,8 @@ export default function ImportPage() {
       notifications.show({
         color: "red",
         title: "Erro ao importar",
-        message: err instanceof Error ? err.message : "Não foi possível importar os leads.",
+        message: getErrorMessage(err, "Não foi possível importar os leads."),
+        autoClose: false,
       });
     } finally {
       setImporting(false);

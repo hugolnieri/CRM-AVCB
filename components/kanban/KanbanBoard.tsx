@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
 import { useUpdateLeadStage } from "@/hooks/useUpdateLead";
 import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
+import { getErrorMessage } from "@/lib/errors";
 import type { Lead, PipelineStage } from "@/types/lead";
 
 interface Props {
@@ -34,7 +35,7 @@ export function KanbanBoard({ leads, onCardClick }: Props) {
         onError: (err) =>
           notifications.show({
             color: "red",
-            message: err instanceof Error ? err.message : "Erro ao mover o lead.",
+            message: getErrorMessage(err, "Erro ao mover o lead."),
           }),
       },
     );

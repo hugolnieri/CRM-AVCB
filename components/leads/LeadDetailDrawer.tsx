@@ -23,6 +23,7 @@ import { useActivities, useAddActivity } from "@/hooks/useActivities";
 import { useUpdateLeadAvcb } from "@/hooks/useUpdateLead";
 import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
+import { getErrorMessage } from "@/lib/errors";
 import type { Lead } from "@/types/lead";
 
 interface Props {
@@ -70,7 +71,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         onError: (err) =>
           notifications.show({
             color: "red",
-            message: err instanceof Error ? err.message : "Erro ao salvar.",
+            message: getErrorMessage(err, "Erro ao salvar."),
           }),
       },
     );
@@ -85,7 +86,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         onError: (err) =>
           notifications.show({
             color: "red",
-            message: err instanceof Error ? err.message : "Erro ao salvar nota.",
+            message: getErrorMessage(err, "Erro ao salvar nota."),
           }),
       },
     );

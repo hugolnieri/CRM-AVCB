@@ -104,6 +104,14 @@ describe("parseGoogleScraperCsv", () => {
     expect(lead.hours).toBe("· Fecha 23:00");
   });
 
+  it("rejects an Excel XML Spreadsheet mistakenly saved with a .csv extension", () => {
+    const xmlSpreadsheet = `<?xml version="1.0"?>\n<Workbook><Worksheet><Table><Row><Cell r="A1" t="str"><Data>x</Data></Cell></Row></Table></Worksheet></Workbook>`;
+    expect(() => parseGoogleScraperCsv(xmlSpreadsheet)).toThrow(/planilha XML/);
+
+    const sheetXmlFragment = `<row r="4"><c r="D4" t="str"><v>(322)</v></c><c r="E4" t="str"><v>Loja de variedades</v></c></row>`;
+    expect(() => parseGoogleScraperCsv(sheetXmlFragment)).toThrow(/planilha XML/);
+  });
+
   it("parses a pasted block with no header row", () => {
     const dataLine = csvText.trim().split("\n").slice(3, 4).join("\n");
     const withoutHeader = parseGoogleScraperCsv(dataLine);

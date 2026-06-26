@@ -22,6 +22,20 @@ const LEFT_FIXED_COUNT = 5;
 const RIGHT_FIXED_COUNT = 4;
 const MIN_COLUMNS = LEFT_FIXED_COUNT + RIGHT_FIXED_COUNT;
 
+// Excel's "Save As" dialog has an XML Spreadsheet option right next to the CSV
+// ones, and it's an easy misclick — the result still gets a .csv extension but
+// the content is actually <Worksheet>/<c r="A1"...> markup. Fail loudly instead
+// of silently producing garbage rows from it.
+const XML_SPREADSHEET_MARKER = /<\?xml|<Workbook|<c\s+r="[A-Z]+\d+"/;
+
+function assertLooksLikeCsv(rawCsvText: string): void {
+  if (XML_SPREADSHEET_MARKER.test(rawCsvText.slice(0, 2000))) {
+    throw new Error(
+      "Esse arquivo parece ser uma planilha XML do Excel, não um CSV. Abra o arquivo no Excel/Planilhas e use \"Salvar como\" → CSV (separado por vírgulas), depois importe de novo.",
+    );
+  }
+}
+
 function hasHeaderRow(rows: string[][]): boolean {
   return rows.length > 0 && rows[0][0]?.includes(KNOWN_HEADER_MARKER) === true;
 }
@@ -115,6 +129,8 @@ function dedupeByPlaceIdOrUrl(leads: ParsedLead[]): ParsedLead[] {
 }
 
 export function parseGoogleScraperCsv(rawCsvText: string): ParsedLead[] {
+  assertLooksLikeCsv(rawCsvText);
+
   const { data } = Papa.parse<string[]>(rawCsvText, {
     skipEmptyLines: "greedy",
   });

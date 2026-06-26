@@ -16,6 +16,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface FormValues {
   email: string;
@@ -80,7 +81,7 @@ export default function LoginPage() {
       notifications.show({
         color: "red",
         title: "Erro",
-        message: err instanceof Error ? err.message : "Não foi possível continuar.",
+        message: getErrorMessage(err, "Não foi possível continuar."),
       });
     } finally {
       setLoading(false);
