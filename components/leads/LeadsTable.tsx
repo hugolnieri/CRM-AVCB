@@ -37,6 +37,7 @@ export function LeadsTable({ leads, onRowClick }: Props) {
   }
 
   return (
+    <Table.ScrollContainer minWidth={700}>
     <Table striped highlightOnHover withTableBorder>
       <Table.Thead>
         {table.getHeaderGroups().map((headerGroup) => (
@@ -63,5 +64,6 @@ export function LeadsTable({ leads, onRowClick }: Props) {
         ))}
       </Table.Tbody>
     </Table>
+    </Table.ScrollContainer>
   );
 }

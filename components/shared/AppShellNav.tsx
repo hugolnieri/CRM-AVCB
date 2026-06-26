@@ -1,6 +1,7 @@
 "use client";
 
-import { AppShell, NavLink, Group, Title, Button } from "@mantine/core";
+import { AppShell, NavLink, Group, Title, Button, Burger } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconLayoutDashboard,
   IconUpload,
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
 export function AppShellNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure(false);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -31,10 +33,21 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AppShell header={{ height: 60 }} navbar={{ width: 220, breakpoint: "sm" }} padding="md">
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: 220,
+        breakpoint: "sm",
+        collapsed: { mobile: !mobileOpened },
+      }}
+      padding="md"
+    >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={4}>CRM AVCB</Title>
+          <Group gap="sm">
+            <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
+            <Title order={4}>CRM AVCB</Title>
+          </Group>
           <Button
             variant="subtle"
             color="gray"
@@ -55,6 +68,7 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
             label={item.label}
             leftSection={<item.icon size={18} />}
             active={pathname.startsWith(item.href)}
+            onClick={closeMobile}
           />
         ))}
       </AppShell.Navbar>

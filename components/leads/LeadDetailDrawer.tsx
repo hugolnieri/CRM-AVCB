@@ -13,6 +13,7 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
 import { IconMapPin, IconPhone } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
@@ -32,13 +33,15 @@ interface Props {
 }
 
 export function LeadDetailDrawer({ lead, onClose }: Props) {
+  const isMobile = useMediaQuery("(max-width: 48em)");
+
   return (
     <Drawer
       opened={lead !== null}
       onClose={onClose}
       title={lead ? <Title order={3}>{lead.name}</Title> : null}
       position="right"
-      size="lg"
+      size={isMobile ? "100%" : "lg"}
     >
       {/* Keying by lead.id resets all local form state when a different lead is
           opened, without needing an effect to re-sync state from props. */}

@@ -16,7 +16,7 @@ interface Props {
 
 export function LeadFilters({ value, onChange, categoryOptions }: Props) {
   return (
-    <Group>
+    <Group align="flex-end" grow={false} wrap="wrap">
       <Select
         label="Etapa"
         placeholder="Todas"
@@ -24,6 +24,7 @@ export function LeadFilters({ value, onChange, categoryOptions }: Props) {
         data={PIPELINE_STAGES.map((s) => ({ value: s.value, label: s.label }))}
         value={value.stage}
         onChange={(stage) => onChange({ ...value, stage })}
+        style={{ flex: "1 1 180px" }}
       />
       <Select
         label="Status AVCB"
@@ -32,6 +33,7 @@ export function LeadFilters({ value, onChange, categoryOptions }: Props) {
         data={AVCB_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
         value={value.avcbStatus}
         onChange={(avcbStatus) => onChange({ ...value, avcbStatus })}
+        style={{ flex: "1 1 180px" }}
       />
       <Select
         label="Categoria"
@@ -41,6 +43,7 @@ export function LeadFilters({ value, onChange, categoryOptions }: Props) {
         data={categoryOptions}
         value={value.category}
         onChange={(category) => onChange({ ...value, category })}
+        style={{ flex: "1 1 180px" }}
       />
     </Group>
   );

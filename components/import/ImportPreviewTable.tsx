@@ -8,6 +8,7 @@ interface Props {
 
 export function ImportPreviewTable({ leads, existingKeys }: Props) {
   return (
+    <Table.ScrollContainer minWidth={600}>
     <Table striped highlightOnHover withTableBorder>
       <Table.Thead>
         <Table.Tr>
@@ -39,5 +40,6 @@ export function ImportPreviewTable({ leads, existingKeys }: Props) {
         })}
       </Table.Tbody>
     </Table>
+    </Table.ScrollContainer>
   );
 }
