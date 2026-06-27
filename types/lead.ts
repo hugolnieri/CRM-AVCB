@@ -37,6 +37,8 @@ export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   avcbStatus: AvcbStatus;
   avcbValidade: string | null;
   assignedUserId: string | null;
+  cnpj: string | null;
+  receitaData: import("./receita").ReceitaData | null;
   createdAt: string;
   updatedAt: string;
 }

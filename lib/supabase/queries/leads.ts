@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { AvcbStatus, Lead, ParsedLead, PipelineStage } from "@/types/lead";
+import type { ReceitaData } from "@/types/receita";
 
 interface LeadRow {
   id: string;
@@ -20,6 +21,8 @@ interface LeadRow {
   avcb_status: AvcbStatus;
   avcb_validade: string | null;
   assigned_user_id: string | null;
+  cnpj: string | null;
+  receita_data: ReceitaData | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +47,8 @@ function mapRowToLead(row: LeadRow): Lead {
     avcbStatus: row.avcb_status,
     avcbValidade: row.avcb_validade,
     assignedUserId: row.assigned_user_id,
+    cnpj: row.cnpj,
+    receitaData: row.receita_data,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -157,6 +162,19 @@ export async function updateLeadAvcb(
   const { error } = await supabase
     .from("leads")
     .update({ avcb_status: avcbStatus, avcb_validade: avcbValidade })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateLeadReceita(
+  id: string,
+  cnpj: string,
+  receitaData: ReceitaData,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ cnpj, receita_data: receitaData })
     .eq("id", id);
   if (error) throw error;
 }

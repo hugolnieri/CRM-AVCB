@@ -25,6 +25,7 @@ import type { LicencaBombeiros } from "@/types/bombeiros";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
+import { ReceitaLookup } from "@/components/leads/ReceitaLookup";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities, useAddActivity } from "@/hooks/useActivities";
 import { useUpdateLeadAvcb } from "@/hooks/useUpdateLead";
@@ -194,6 +195,10 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         lng={lead.lng}
         onApplyStatus={(status) => setAvcbStatus(status)}
       />
+
+      <Divider label="Dados da Receita (CNPJ)" labelPosition="left" />
+
+      <ReceitaLookup leadId={lead.id} initialCnpj={lead.cnpj} initialData={lead.receitaData} />
 
       <Divider label="Notas e histórico" labelPosition="left" />
 
