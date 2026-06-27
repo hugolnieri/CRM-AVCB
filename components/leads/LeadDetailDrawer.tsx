@@ -4,18 +4,21 @@ import { useState } from "react";
 import {
   Anchor,
   Button,
+  CopyButton,
   Divider,
   Drawer,
   Group,
+  Paper,
   Select,
   Stack,
   Text,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
-import { IconMapPin, IconPhone } from "@tabler/icons-react";
+import { IconMapPin, IconPhone, IconCopy, IconCheck } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
@@ -122,7 +125,41 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         </Anchor>
       </Group>
 
-      {lead.address && <Text size="sm">{lead.address}</Text>}
+      <Divider label="Endereço" labelPosition="left" />
+
+      {lead.address ? (
+        <Paper withBorder p="sm" radius="md">
+          <Group justify="space-between" align="flex-start" wrap="nowrap">
+            <Text size="sm" style={{ wordBreak: "break-word" }}>
+              {lead.address}
+            </Text>
+            <CopyButton value={lead.address} timeout={2000}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? "Copiado!" : "Copiar endereço"} withArrow>
+                  <Button
+                    size="compact-sm"
+                    variant="light"
+                    color={copied ? "teal" : "gray"}
+                    onClick={copy}
+                    leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                  >
+                    {copied ? "Copiado" : "Copiar"}
+                  </Button>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+          {lead.lat != null && lead.lng != null && (
+            <Text size="xs" c="dimmed" mt="xs">
+              Coordenadas: {lead.lat}, {lead.lng}
+            </Text>
+          )}
+        </Paper>
+      ) : (
+        <Text size="sm" c="dimmed">
+          Endereço não identificado na importação — use o botão &quot;Ver no Maps&quot; acima.
+        </Text>
+      )}
 
       <Divider label="AVCB" labelPosition="left" />
 
