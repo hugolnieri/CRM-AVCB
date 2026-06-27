@@ -221,27 +221,42 @@ function BombeirosLookup({
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
 
-  async function fetchMunicipio() {
-    if (municipio || lat == null || lng == null) return;
+  async function fetchMunicipio(): Promise<string | null> {
+    if (municipio) return municipio;
+    if (lat == null || lng == null) return null;
     setLoading(true);
     try {
       const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
       const data = await res.json();
-      if (res.ok && data.municipio) setMunicipio(data.municipio as string);
+      if (res.ok && data.municipio) {
+        setMunicipio(data.municipio as string);
+        return data.municipio as string;
+      }
     } catch {
       // best-effort — o usuário ainda consegue selecionar o município no site
     } finally {
       setLoading(false);
     }
+    return null;
+  }
+
+  function openBombeiros(muni: string | null) {
+    // Os dados vão no fragmento (#) da URL: o # não é enviado ao servidor (não
+    // interfere no postback do ASP.NET), mas o userscript de auto-preenchimento
+    // consegue lê-lo na página dos Bombeiros.
+    const payload = encodeURIComponent(
+      JSON.stringify({ municipio: muni ?? "", logradouro, numero }),
+    );
+    window.open(`${BOMBEIROS_AVCB_URL}#avcb=${payload}`, "_blank", "noopener,noreferrer");
   }
 
   async function handleStart() {
-    await fetchMunicipio();
+    const muni = await fetchMunicipio();
     if (logradouro) {
       navigator.clipboard?.writeText(logradouro).catch(() => {});
     }
     setStarted(true);
-    window.open(BOMBEIROS_AVCB_URL, "_blank", "noopener,noreferrer");
+    openBombeiros(muni);
   }
 
   if (!logradouro) {
@@ -268,9 +283,9 @@ function BombeirosLookup({
       {started && (
         <Paper withBorder p="sm" radius="md">
           <Text size="xs" c="dimmed" mb="sm">
-            No site dos Bombeiros (abriu em outra aba): selecione o <b>município</b>, cole o{" "}
-            <b>logradouro</b> e o <b>número</b>, resolva o código da imagem e clique em pesquisar. O
-            logradouro já foi copiado.
+            Abriu o site dos Bombeiros em outra aba. Com o auto-preenchimento instalado, cidade, rua
+            e número já vêm prontos — só resolva o código da imagem e clique em pesquisar. Sem ele,
+            use os campos abaixo (o logradouro já foi copiado).
           </Text>
           <Stack gap={6}>
             <CopyableField label="Município" value={municipio ?? "não identificado"} />
@@ -281,7 +296,7 @@ function BombeirosLookup({
             variant="subtle"
             size="compact-sm"
             mt="sm"
-            onClick={() => window.open(BOMBEIROS_AVCB_URL, "_blank", "noopener,noreferrer")}
+            onClick={() => openBombeiros(municipio)}
           >
             Abrir site novamente
           </Button>
