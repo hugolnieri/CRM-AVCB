@@ -65,12 +65,18 @@ export async function GET(request: Request) {
     const data = (await res.json()) as { address?: NominatimAddress; display_name?: string };
     const address = data.address ? formatAddress(data.address) : data.display_name ?? "";
     const cep = data.address?.postcode ?? null;
+    const municipio =
+      data.address?.city ??
+      data.address?.town ??
+      data.address?.village ??
+      data.address?.municipality ??
+      null;
 
     if (!address) {
       return NextResponse.json({ error: "Endereço não encontrado para estas coordenadas" }, { status: 404 });
     }
 
-    return NextResponse.json({ address, cep });
+    return NextResponse.json({ address, cep, municipio });
   } catch {
     return NextResponse.json({ error: "Erro ao consultar o serviço de endereço" }, { status: 502 });
   }

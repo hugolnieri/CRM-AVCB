@@ -18,7 +18,8 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
-import { IconMapPin, IconPhone, IconCopy, IconCheck } from "@tabler/icons-react";
+import { IconMapPin, IconPhone, IconCopy, IconCheck, IconFlame } from "@tabler/icons-react";
+import { parseLogradouro, BOMBEIROS_AVCB_URL } from "@/lib/address";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
@@ -154,11 +155,10 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
       {lead.lat != null && lead.lng != null && (
         <Button
           variant="light"
-          size="compact-sm"
+          fullWidth
           loading={loadingAddress}
           onClick={handleFetchFullAddress}
-          leftSection={<IconMapPin size={14} />}
-          style={{ alignSelf: "flex-start" }}
+          leftSection={<IconMapPin size={16} />}
         >
           {fullAddress ? "Buscar novamente" : "Buscar endereço completo (CEP)"}
         </Button>
@@ -186,6 +186,8 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         </Button>
       </Group>
 
+      <BombeirosLookup address={lead.address} lat={lead.lat} lng={lead.lng} />
+
       <Divider label="Notas e histórico" labelPosition="left" />
 
       <Textarea
@@ -202,6 +204,118 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
       <ActivityTimeline activities={activities} loading={loadingActivities} />
     </Stack>
+  );
+}
+
+function BombeirosLookup({
+  address,
+  lat,
+  lng,
+}: {
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+}) {
+  const { logradouro, numero } = parseLogradouro(address);
+  const [municipio, setMunicipio] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  async function fetchMunicipio() {
+    if (municipio || lat == null || lng == null) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
+      const data = await res.json();
+      if (res.ok && data.municipio) setMunicipio(data.municipio as string);
+    } catch {
+      // best-effort — o usuário ainda consegue selecionar o município no site
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleStart() {
+    await fetchMunicipio();
+    if (logradouro) {
+      navigator.clipboard?.writeText(logradouro).catch(() => {});
+    }
+    setStarted(true);
+    window.open(BOMBEIROS_AVCB_URL, "_blank", "noopener,noreferrer");
+  }
+
+  if (!logradouro) {
+    return (
+      <Text size="sm" c="dimmed">
+        Sem endereço suficiente para consultar nos Bombeiros.
+      </Text>
+    );
+  }
+
+  return (
+    <Stack gap="xs">
+      <Button
+        variant="light"
+        color="red"
+        leftSection={<IconFlame size={16} />}
+        loading={loading}
+        onClick={handleStart}
+        fullWidth
+      >
+        Consultar AVCB nos Bombeiros
+      </Button>
+
+      {started && (
+        <Paper withBorder p="sm" radius="md">
+          <Text size="xs" c="dimmed" mb="sm">
+            No site dos Bombeiros (abriu em outra aba): selecione o <b>município</b>, cole o{" "}
+            <b>logradouro</b> e o <b>número</b>, resolva o código da imagem e clique em pesquisar. O
+            logradouro já foi copiado.
+          </Text>
+          <Stack gap={6}>
+            <CopyableField label="Município" value={municipio ?? "não identificado"} />
+            <CopyableField label="Logradouro" value={logradouro} />
+            <CopyableField label="Número" value={numero || "—"} />
+          </Stack>
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            mt="sm"
+            onClick={() => window.open(BOMBEIROS_AVCB_URL, "_blank", "noopener,noreferrer")}
+          >
+            Abrir site novamente
+          </Button>
+        </Paper>
+      )}
+    </Stack>
+  );
+}
+
+function CopyableField({ label, value }: { label: string; value: string }) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="xs">
+      <Text size="sm">
+        <Text span c="dimmed">
+          {label}:{" "}
+        </Text>
+        {value}
+      </Text>
+      <CopyButton value={value} timeout={2000}>
+        {({ copied, copy }) => (
+          <Tooltip label={copied ? "Copiado!" : "Copiar"} withArrow>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              color={copied ? "teal" : "gray"}
+              onClick={copy}
+              leftSection={copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+            >
+              {copied ? "Copiado" : "Copiar"}
+            </Button>
+          </Tooltip>
+        )}
+      </CopyButton>
+    </Group>
   );
 }
 
