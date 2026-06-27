@@ -59,10 +59,30 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
     lead.avcbValidade ? dayjs(lead.avcbValidade).toDate() : null,
   );
   const [noteBody, setNoteBody] = useState("");
+  const [fullAddress, setFullAddress] = useState<string | null>(null);
+  const [loadingAddress, setLoadingAddress] = useState(false);
 
   const { data: activities, isLoading: loadingActivities } = useActivities(lead.id);
   const updateAvcb = useUpdateLeadAvcb();
   const addNote = useAddActivity(lead.id);
+
+  async function handleFetchFullAddress() {
+    if (lead.lat == null || lead.lng == null) return;
+    setLoadingAddress(true);
+    try {
+      const res = await fetch(`/api/geocode?lat=${lead.lat}&lng=${lead.lng}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Não foi possível buscar o endereço.");
+      setFullAddress(data.address as string);
+    } catch (err) {
+      notifications.show({
+        color: "red",
+        message: getErrorMessage(err, "Não foi possível buscar o endereço completo."),
+      });
+    } finally {
+      setLoadingAddress(false);
+    }
+  }
 
   function handleSaveAvcb() {
     updateAvcb.mutate(
@@ -127,38 +147,21 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
       <Divider label="Endereço" labelPosition="left" />
 
-      {lead.address ? (
-        <Paper withBorder p="sm" radius="md">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Text size="sm" style={{ wordBreak: "break-word" }}>
-              {lead.address}
-            </Text>
-            <CopyButton value={lead.address} timeout={2000}>
-              {({ copied, copy }) => (
-                <Tooltip label={copied ? "Copiado!" : "Copiar endereço"} withArrow>
-                  <Button
-                    size="compact-sm"
-                    variant="light"
-                    color={copied ? "teal" : "gray"}
-                    onClick={copy}
-                    leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                  >
-                    {copied ? "Copiado" : "Copiar"}
-                  </Button>
-                </Tooltip>
-              )}
-            </CopyButton>
-          </Group>
-          {lead.lat != null && lead.lng != null && (
-            <Text size="xs" c="dimmed" mt="xs">
-              Coordenadas: {lead.lat}, {lead.lng}
-            </Text>
-          )}
-        </Paper>
-      ) : (
-        <Text size="sm" c="dimmed">
-          Endereço não identificado na importação — use o botão &quot;Ver no Maps&quot; acima.
-        </Text>
+      <AddressRow label="Da importação (Google Maps)" value={lead.address} />
+
+      {fullAddress && <AddressRow label="Endereço completo (com CEP)" value={fullAddress} highlight />}
+
+      {lead.lat != null && lead.lng != null && (
+        <Button
+          variant="light"
+          size="compact-sm"
+          loading={loadingAddress}
+          onClick={handleFetchFullAddress}
+          leftSection={<IconMapPin size={14} />}
+          style={{ alignSelf: "flex-start" }}
+        >
+          {fullAddress ? "Buscar novamente" : "Buscar endereço completo (CEP)"}
+        </Button>
       )}
 
       <Divider label="AVCB" labelPosition="left" />
@@ -199,5 +202,51 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
       <ActivityTimeline activities={activities} loading={loadingActivities} />
     </Stack>
+  );
+}
+
+function AddressRow({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string | null;
+  highlight?: boolean;
+}) {
+  if (!value) {
+    return (
+      <Text size="sm" c="dimmed">
+        {label}: não identificado.
+      </Text>
+    );
+  }
+
+  return (
+    <Paper withBorder p="sm" radius="md" bg={highlight ? "var(--mantine-color-teal-light)" : undefined}>
+      <Text size="xs" c="dimmed" mb={4}>
+        {label}
+      </Text>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Text size="sm" style={{ wordBreak: "break-word" }}>
+          {value}
+        </Text>
+        <CopyButton value={value} timeout={2000}>
+          {({ copied, copy }) => (
+            <Tooltip label={copied ? "Copiado!" : "Copiar endereço"} withArrow>
+              <Button
+                size="compact-sm"
+                variant="light"
+                color={copied ? "teal" : "gray"}
+                onClick={copy}
+                leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+              >
+                {copied ? "Copiado" : "Copiar"}
+              </Button>
+            </Tooltip>
+          )}
+        </CopyButton>
+      </Group>
+    </Paper>
   );
 }
