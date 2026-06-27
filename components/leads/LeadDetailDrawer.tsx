@@ -20,6 +20,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
 import { IconMapPin, IconPhone, IconCopy, IconCheck, IconFlame } from "@tabler/icons-react";
 import { parseLogradouro, BOMBEIROS_AVCB_URL } from "@/lib/address";
+import { inferAvcbStatus } from "@/lib/bombeiros";
+import type { LicencaBombeiros } from "@/types/bombeiros";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
@@ -186,7 +188,12 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         </Button>
       </Group>
 
-      <BombeirosLookup address={lead.address} lat={lead.lat} lng={lead.lng} />
+      <BombeirosLookup
+        address={lead.address}
+        lat={lead.lat}
+        lng={lead.lng}
+        onApplyStatus={(status) => setAvcbStatus(status)}
+      />
 
       <Divider label="Notas e histórico" labelPosition="left" />
 
@@ -211,15 +218,20 @@ function BombeirosLookup({
   address,
   lat,
   lng,
+  onApplyStatus,
 }: {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  onApplyStatus: (status: string) => void;
 }) {
   const { logradouro, numero } = parseLogradouro(address);
   const [municipio, setMunicipio] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiLicencas, setApiLicencas] = useState<LicencaBombeiros[] | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   async function fetchMunicipio(): Promise<string | null> {
     if (municipio) return municipio;
@@ -257,6 +269,52 @@ function BombeirosLookup({
     }
     setStarted(true);
     openBombeiros(muni);
+  }
+
+  async function handleConsultApi() {
+    const muni = await fetchMunicipio();
+    if (!muni) {
+      notifications.show({
+        color: "red",
+        message: "Não foi possível identificar o município para essa consulta.",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Essa consulta é paga (~R$ 0,20, debitado do seu saldo na Infosimples).\n\nMunicípio: ${muni}\nLogradouro: ${logradouro}\nNúmero: ${numero || "(não informado)"}\n\nConfirmar consulta?`,
+    );
+    if (!confirmed) return;
+
+    setApiLoading(true);
+    setApiError(null);
+    try {
+      const res = await fetch("/api/bombeiros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ municipio: muni, endereco: logradouro, numero }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setApiError(data.error ?? "Não foi possível consultar.");
+        setApiLicencas(null);
+        return;
+      }
+      setApiLicencas(data.licencas as LicencaBombeiros[]);
+    } catch (err) {
+      setApiError(getErrorMessage(err, "Não foi possível consultar."));
+      setApiLicencas(null);
+    } finally {
+      setApiLoading(false);
+    }
+  }
+
+  function handleApplyLicenca(licenca: LicencaBombeiros) {
+    onApplyStatus(inferAvcbStatus(licenca.situacao));
+    notifications.show({
+      color: "blue",
+      message: `Status sugerido a partir de "${licenca.situacao}". Confira e clique em Salvar.`,
+    });
   }
 
   if (!logradouro) {
@@ -301,6 +359,61 @@ function BombeirosLookup({
             Abrir site novamente
           </Button>
         </Paper>
+      )}
+
+      <Divider label="ou" labelPosition="center" />
+
+      <Button
+        variant="light"
+        color="grape"
+        leftSection={<IconFlame size={16} />}
+        loading={apiLoading}
+        onClick={handleConsultApi}
+        fullWidth
+      >
+        Consultar via API (~R$ 0,20/consulta)
+      </Button>
+
+      {apiError && (
+        <Text size="sm" c="red">
+          {apiError}
+        </Text>
+      )}
+
+      {apiLicencas && apiLicencas.length === 0 && (
+        <Text size="sm" c="dimmed">
+          Nenhuma licença encontrada para esse endereço.
+        </Text>
+      )}
+
+      {apiLicencas && apiLicencas.length > 0 && (
+        <Stack gap="xs">
+          {apiLicencas.map((licenca, i) => (
+            <Paper key={i} withBorder p="sm" radius="md">
+              <Group justify="space-between" align="flex-start">
+                <div>
+                  <Text size="sm" fw={500}>
+                    {licenca.tipoLicenca} — {licenca.situacao}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Nº {licenca.numeroLicenca} · {licenca.bairro} · {licenca.ocupacao}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {licenca.endereco}
+                  </Text>
+                </div>
+                <Button size="compact-xs" variant="light" onClick={() => handleApplyLicenca(licenca)}>
+                  Usar este resultado
+                </Button>
+              </Group>
+              {licenca.siteReceipt && (
+                <Anchor href={licenca.siteReceipt} target="_blank" rel="noopener noreferrer" size="xs">
+                  Ver comprovante oficial
+                </Anchor>
+              )}
+            </Paper>
+          ))}
+        </Stack>
       )}
     </Stack>
   );
