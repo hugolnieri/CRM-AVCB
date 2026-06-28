@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Stack, Title, Loader, Text } from "@mantine/core";
+import { Stack, Title, Loader, Text, TextInput } from "@mantine/core";
+import { IconSearch } from "@tabler/icons-react";
 import { useLeads } from "@/hooks/useLeads";
 import { LeadsTable } from "@/components/leads/LeadsTable";
 import { LeadFilters, type LeadFiltersValue } from "@/components/leads/LeadFilters";
 import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
+import { leadMatchesQuery } from "@/lib/search";
 import type { Lead } from "@/types/lead";
 
 export default function LeadsPage() {
   const { data: leads, isLoading, error } = useLeads();
+  const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<LeadFiltersValue>({
     stage: null,
     avcbStatus: null,
@@ -28,9 +31,10 @@ export default function LeadsPage() {
       if (filters.stage && lead.pipelineStage !== filters.stage) return false;
       if (filters.avcbStatus && lead.avcbStatus !== filters.avcbStatus) return false;
       if (filters.category && lead.category !== filters.category) return false;
+      if (!leadMatchesQuery(lead, search)) return false;
       return true;
     });
-  }, [leads, filters]);
+  }, [leads, filters, search]);
 
   return (
     <Stack>
@@ -41,6 +45,12 @@ export default function LeadsPage() {
 
       {leads && (
         <>
+          <TextInput
+            placeholder="Buscar por nome, cidade, categoria, telefone, CNPJ..."
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+          />
           <LeadFilters value={filters} onChange={setFilters} categoryOptions={categoryOptions} />
           <LeadsTable leads={filteredLeads} onRowClick={setSelectedLead} />
         </>
