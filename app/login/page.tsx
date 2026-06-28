@@ -90,7 +90,7 @@ export default function LoginPage() {
 
   return (
     <Container size={420} my={80}>
-      <Title ta="center">CRM AVCB</Title>
+      <Title ta="center">SEICO</Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
         {mode === "sign-in" ? "Entre na sua conta" : "Crie sua conta"}
       </Text>

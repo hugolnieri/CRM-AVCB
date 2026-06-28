@@ -8,8 +8,8 @@ import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "CRM AVCB",
-  description: "CRM de prospecção e renovação de AVCB",
+  title: "SEICO",
+  description: "Sistema de prospecção e gestão de clientes de AVCB",
 };
 
 export default function RootLayout({

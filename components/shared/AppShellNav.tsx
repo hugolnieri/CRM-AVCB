@@ -17,6 +17,8 @@ import {
   IconUpload,
   IconLayoutKanban,
   IconList,
+  IconUsers,
+  IconReportAnalytics,
   IconLogout,
   IconSun,
   IconMoon,
@@ -28,8 +30,10 @@ import { createClient } from "@/lib/supabase/client";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/import", label: "Importar", icon: IconUpload },
-  { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
   { href: "/leads", label: "Leads", icon: IconList },
+  { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
+  { href: "/clientes", label: "Clientes", icon: IconUsers },
+  { href: "/relatorios", label: "Relatórios", icon: IconReportAnalytics },
 ];
 
 export function AppShellNav({ children }: { children: React.ReactNode }) {
@@ -64,7 +68,7 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
-            <Title order={4}>CRM AVCB</Title>
+            <Title order={4}>SEICO</Title>
           </Group>
           <Group gap="xs">
             <ActionIcon
