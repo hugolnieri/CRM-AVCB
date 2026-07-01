@@ -70,11 +70,16 @@ export function EditableAddress({ leadId, initial, importedAddress, lat, lng }: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível buscar o endereço.");
 
-      // O geocode raramente traz o número — usa o número da importação do Maps.
-      const numeroImport = parseLogradouro(importedAddress).numero;
+      // Preferimos o NOME DA RUA da importação do Google Maps: a grafia dele
+      // costuma bater com o cadastro do Corpo de Bombeiros, ao contrário do
+      // OpenStreetMap (ex.: "João Pilon" vs "João Pillon"). Usamos o OSM só para
+      // bairro/cidade/UF/CEP, e o número também vem da importação.
+      const parsed = parseLogradouro(importedAddress);
+      const importedStreet = importedAddress ? importedAddress.split(",")[0].trim() : "";
+      const hasRealStreet = /[a-zA-ZÀ-ÿ]{3,}/.test(importedStreet);
       setFields({
-        logradouro: data.logradouro ?? "",
-        numero: numeroImport || data.numero || "",
+        logradouro: hasRealStreet ? importedStreet : data.logradouro ?? "",
+        numero: parsed.numero || data.numero || "",
         bairro: data.bairro ?? "",
         cidade: data.cidade ?? "",
         uf: data.uf ?? "",
