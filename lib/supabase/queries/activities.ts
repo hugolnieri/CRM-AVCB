@@ -46,6 +46,17 @@ export async function addActivity(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // activities.author_id has a FK to team_members(id). Users created before the
+  // sign-up upsert existed (or whose upsert failed) have no profile row, which
+  // makes this insert violate the constraint. Guarantee the profile exists first.
+  if (user) {
+    const fullName =
+      (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "Usuário";
+    await supabase
+      .from("team_members")
+      .upsert({ id: user.id, full_name: fullName, email: user.email ?? "" });
+  }
+
   const { error } = await supabase.from("activities").insert({
     lead_id: leadId,
     author_id: user?.id ?? null,
