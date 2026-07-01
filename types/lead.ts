@@ -11,6 +11,16 @@ export type AvcbStatus = "em_dia" | "a_vencer" | "vencido" | "nao_informado";
 /** Tipo de licença do Corpo de Bombeiros que o imóvel possui/precisa. */
 export type LicencaTipo = "AVCB" | "CLCB" | "TAACB";
 
+/** Endereço estruturado e editável do lead. */
+export interface EnderecoDetalhado {
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  cep: string | null;
+}
+
 export interface ParsedLead {
   mapsUrl: string;
   placeId: string | null;
@@ -43,6 +53,7 @@ export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   assignedUserId: string | null;
   cnpj: string | null;
   receitaData: import("./receita").ReceitaData | null;
+  enderecoDetalhado: EnderecoDetalhado | null;
   position: number;
   createdAt: string;
   updatedAt: string;

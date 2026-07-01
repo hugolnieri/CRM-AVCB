@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
-import type { AvcbStatus, Lead, LicencaTipo, ParsedLead, PipelineStage } from "@/types/lead";
+import type {
+  AvcbStatus,
+  EnderecoDetalhado,
+  Lead,
+  LicencaTipo,
+  ParsedLead,
+  PipelineStage,
+} from "@/types/lead";
 import type { ReceitaData } from "@/types/receita";
 
 interface LeadRow {
@@ -24,6 +31,7 @@ interface LeadRow {
   assigned_user_id: string | null;
   cnpj: string | null;
   receita_data: ReceitaData | null;
+  endereco_detalhado: EnderecoDetalhado | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -52,6 +60,7 @@ function mapRowToLead(row: LeadRow): Lead {
     assignedUserId: row.assigned_user_id,
     cnpj: row.cnpj,
     receitaData: row.receita_data,
+    enderecoDetalhado: row.endereco_detalhado,
     position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -200,6 +209,18 @@ export async function updateLeadReceita(
   const { error } = await supabase
     .from("leads")
     .update({ cnpj, receita_data: receitaData })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateLeadEndereco(
+  id: string,
+  enderecoDetalhado: EnderecoDetalhado,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ endereco_detalhado: enderecoDetalhado })
     .eq("id", id);
   if (error) throw error;
 }
