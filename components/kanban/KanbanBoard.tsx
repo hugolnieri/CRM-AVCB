@@ -44,10 +44,12 @@ export function KanbanBoard({ leads, onCardClick }: Props) {
     const leadId = active.id as string;
     const toStage = over.id as PipelineStage;
     const lead = leads.find((l) => l.id === leadId);
-    if (!lead || lead.pipelineStage === toStage) return;
+    if (!lead) return;
 
+    // Always bring the dragged card to the top of its column (position = now),
+    // whether it changed columns or was reordered within the same one.
     updateStage.mutate(
-      { leadId, fromStage: lead.pipelineStage, toStage },
+      { leadId, fromStage: lead.pipelineStage, toStage, position: Date.now() },
       {
         onError: (err) =>
           notifications.show({

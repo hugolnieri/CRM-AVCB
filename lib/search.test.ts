@@ -24,6 +24,7 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     assignedUserId: null,
     cnpj: "12345678000199",
     receitaData: null,
+    position: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     ...overrides,

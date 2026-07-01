@@ -24,6 +24,7 @@ function makeLead(stage: PipelineStage, avcb: AvcbStatus, category: string): Lea
     assignedUserId: null,
     cnpj: null,
     receitaData: null,
+    position: 0,
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",
   };

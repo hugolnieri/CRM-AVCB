@@ -1,7 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLeadAvcb, updateLeadStage } from "@/lib/supabase/queries/leads";
+import { updateLeadAvcb, moveLead } from "@/lib/supabase/queries/leads";
 import { addActivity } from "@/lib/supabase/queries/activities";
 import type { AvcbStatus, Lead, PipelineStage } from "@/types/lead";
+
+/** Server order: highest position first, then newest — mirror it in the cache. */
+function sortLeads(leads: Lead[]): Lead[] {
+  return [...leads].sort((a, b) => {
+    if (b.position !== a.position) return b.position - a.position;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+}
 
 export function useUpdateLeadStage() {
   const queryClient = useQueryClient();
@@ -11,25 +19,37 @@ export function useUpdateLeadStage() {
       leadId,
       fromStage,
       toStage,
+      position,
     }: {
       leadId: string;
       fromStage: PipelineStage;
       toStage: PipelineStage;
+      position: number;
     }) => {
-      await updateLeadStage(leadId, toStage);
-      await addActivity(leadId, "stage_change", null, {
-        from_stage: fromStage,
-        to_stage: toStage,
-      });
+      await moveLead(leadId, toStage, position);
+      // Only log an activity when the stage actually changed — dragging a card
+      // to reorder it within the same column shouldn't clutter the history.
+      if (fromStage !== toStage) {
+        await addActivity(leadId, "stage_change", null, {
+          from_stage: fromStage,
+          to_stage: toStage,
+        });
+      }
     },
-    // Optimistic update: move the card in the local cache immediately so the UI
-    // reacts instantly, instead of waiting for the DB writes + refetch (several
-    // round trips on the free Supabase tier). Roll back if the write fails.
-    onMutate: async ({ leadId, toStage }) => {
+    // Optimistic update: apply the new stage + position and re-sort so the card
+    // jumps to the top of its column instantly, without waiting for the DB
+    // writes + refetch. Roll back if the write fails.
+    onMutate: async ({ leadId, toStage, position }) => {
       await queryClient.cancelQueries({ queryKey: ["leads"] });
       const previous = queryClient.getQueryData<Lead[]>(["leads"]);
       queryClient.setQueryData<Lead[]>(["leads"], (old) =>
-        old?.map((l) => (l.id === leadId ? { ...l, pipelineStage: toStage } : l)),
+        old
+          ? sortLeads(
+              old.map((l) =>
+                l.id === leadId ? { ...l, pipelineStage: toStage, position } : l,
+              ),
+            )
+          : old,
       );
       return { previous };
     },

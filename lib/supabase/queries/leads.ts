@@ -23,6 +23,7 @@ interface LeadRow {
   assigned_user_id: string | null;
   cnpj: string | null;
   receita_data: ReceitaData | null;
+  position: number;
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +50,7 @@ function mapRowToLead(row: LeadRow): Lead {
     assignedUserId: row.assigned_user_id,
     cnpj: row.cnpj,
     receitaData: row.receita_data,
+    position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -77,6 +79,7 @@ export async function fetchLeads(): Promise<Lead[]> {
   const { data, error } = await supabase
     .from("leads")
     .select("*")
+    .order("position", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -150,6 +153,25 @@ export async function importLeads(parsedLeads: ParsedLead[]): Promise<ImportResu
 export async function updateLeadStage(id: string, pipelineStage: PipelineStage): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("leads").update({ pipeline_stage: pipelineStage }).eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Moves a lead to a stage and gives it a fresh (largest-so-far) position, so a
+ * dragged card jumps to the top of its column. `position` uses Date.now() — a
+ * monotonically increasing number — so we only write this one row, never
+ * reindexing the whole column (columns can hold hundreds of leads).
+ */
+export async function moveLead(
+  id: string,
+  pipelineStage: PipelineStage,
+  position: number,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ pipeline_stage: pipelineStage, position })
+    .eq("id", id);
   if (error) throw error;
 }
 

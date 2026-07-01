@@ -39,6 +39,7 @@ export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   assignedUserId: string | null;
   cnpj: string | null;
   receitaData: import("./receita").ReceitaData | null;
+  position: number;
   createdAt: string;
   updatedAt: string;
 }
