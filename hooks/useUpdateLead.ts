@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLeadAvcb, moveLead } from "@/lib/supabase/queries/leads";
 import { addActivity } from "@/lib/supabase/queries/activities";
-import type { AvcbStatus, Lead, PipelineStage } from "@/types/lead";
+import type { AvcbStatus, Lead, LicencaTipo, PipelineStage } from "@/types/lead";
 
 /** Server order: highest position first, then newest — mirror it in the cache. */
 function sortLeads(leads: Lead[]): Lead[] {
@@ -69,13 +69,15 @@ export function useUpdateLeadAvcb() {
   return useMutation({
     mutationFn: ({
       leadId,
+      tipoLicenca,
       avcbStatus,
       avcbValidade,
     }: {
       leadId: string;
+      tipoLicenca: LicencaTipo;
       avcbStatus: AvcbStatus;
       avcbValidade: string | null;
-    }) => updateLeadAvcb(leadId, avcbStatus, avcbValidade),
+    }) => updateLeadAvcb(leadId, tipoLicenca, avcbStatus, avcbValidade),
     onSuccess: (_data, { leadId }) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["activities", leadId] });

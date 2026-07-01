@@ -19,8 +19,13 @@ const columns: ColumnDef<Lead>[] = [
   },
   {
     accessorKey: "avcbStatus",
-    header: "AVCB",
-    cell: (c) => <AvcbStatusBadge status={c.getValue() as Lead["avcbStatus"]} />,
+    header: "Licença",
+    cell: (c) => (
+      <AvcbStatusBadge
+        status={c.getValue() as Lead["avcbStatus"]}
+        tipo={c.row.original.tipoLicenca}
+      />
+    ),
   },
 ];
 

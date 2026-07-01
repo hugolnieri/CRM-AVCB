@@ -36,7 +36,7 @@ export function LeadCardView({
         {lead.category ?? "Sem categoria"}
       </Text>
       <Group justify="space-between" mt="xs">
-        <AvcbStatusBadge status={lead.avcbStatus} />
+        <AvcbStatusBadge status={lead.avcbStatus} tipo={lead.tipoLicenca} />
       </Group>
     </Card>
   );

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { AvcbStatus, Lead, ParsedLead, PipelineStage } from "@/types/lead";
+import type { AvcbStatus, Lead, LicencaTipo, ParsedLead, PipelineStage } from "@/types/lead";
 import type { ReceitaData } from "@/types/receita";
 
 interface LeadRow {
@@ -18,6 +18,7 @@ interface LeadRow {
   photo_url: string | null;
   last_review_snippet: string | null;
   pipeline_stage: PipelineStage;
+  tipo_licenca: LicencaTipo;
   avcb_status: AvcbStatus;
   avcb_validade: string | null;
   assigned_user_id: string | null;
@@ -45,6 +46,7 @@ function mapRowToLead(row: LeadRow): Lead {
     photoUrl: row.photo_url,
     lastReviewSnippet: row.last_review_snippet,
     pipelineStage: row.pipeline_stage,
+    tipoLicenca: row.tipo_licenca,
     avcbStatus: row.avcb_status,
     avcbValidade: row.avcb_validade,
     assignedUserId: row.assigned_user_id,
@@ -177,13 +179,14 @@ export async function moveLead(
 
 export async function updateLeadAvcb(
   id: string,
+  tipoLicenca: LicencaTipo,
   avcbStatus: AvcbStatus,
   avcbValidade: string | null,
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("leads")
-    .update({ avcb_status: avcbStatus, avcb_validade: avcbValidade })
+    .update({ tipo_licenca: tipoLicenca, avcb_status: avcbStatus, avcb_validade: avcbValidade })
     .eq("id", id);
   if (error) throw error;
 }

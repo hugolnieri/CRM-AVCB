@@ -8,6 +8,9 @@ export type PipelineStage =
 
 export type AvcbStatus = "em_dia" | "a_vencer" | "vencido" | "nao_informado";
 
+/** Tipo de licença do Corpo de Bombeiros que o imóvel possui/precisa. */
+export type LicencaTipo = "AVCB" | "CLCB" | "TAACB";
+
 export interface ParsedLead {
   mapsUrl: string;
   placeId: string | null;
@@ -34,6 +37,7 @@ export interface ParsedLead {
 export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   id: string;
   pipelineStage: PipelineStage;
+  tipoLicenca: LicencaTipo;
   avcbStatus: AvcbStatus;
   avcbValidade: string | null;
   assignedUserId: string | null;

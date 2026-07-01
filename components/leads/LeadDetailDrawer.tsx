@@ -30,6 +30,7 @@ import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities, useAddActivity } from "@/hooks/useActivities";
 import { useUpdateLeadAvcb } from "@/hooks/useUpdateLead";
 import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
+import { LICENCA_TIPOS, normalizeTipoLicenca } from "@/lib/pipeline/licencaTipo";
 import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
 import { getErrorMessage } from "@/lib/errors";
 import type { Lead } from "@/types/lead";
@@ -58,6 +59,7 @@ export function LeadDetailDrawer({ lead, onClose }: Props) {
 }
 
 function LeadDetailContent({ lead }: { lead: Lead }) {
+  const [tipoLicenca, setTipoLicenca] = useState<string | null>(lead.tipoLicenca);
   const [avcbStatus, setAvcbStatus] = useState<string | null>(lead.avcbStatus);
   const [avcbValidade, setAvcbValidade] = useState<Date | null>(
     lead.avcbValidade ? dayjs(lead.avcbValidade).toDate() : null,
@@ -92,12 +94,13 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
     updateAvcb.mutate(
       {
         leadId: lead.id,
+        tipoLicenca: tipoLicenca as Lead["tipoLicenca"],
         avcbStatus: avcbStatus as Lead["avcbStatus"],
         avcbValidade: avcbValidade ? dayjs(avcbValidade).format("YYYY-MM-DD") : null,
       },
       {
         onSuccess: () =>
-          notifications.show({ color: "green", message: "Status do AVCB atualizado." }),
+          notifications.show({ color: "green", message: "Licença atualizada." }),
         onError: (err) =>
           notifications.show({
             color: "red",
@@ -169,11 +172,18 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         </Button>
       )}
 
-      <Divider label="AVCB" labelPosition="left" />
+      <Divider label="Licença (AVCB / CLCB)" labelPosition="left" />
 
       <Group align="flex-end">
         <Select
-          label="Status do AVCB"
+          label="Tipo"
+          data={LICENCA_TIPOS.map((t) => ({ value: t.value, label: t.label }))}
+          value={tipoLicenca}
+          onChange={setTipoLicenca}
+          w={110}
+        />
+        <Select
+          label="Status"
           data={AVCB_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
           value={avcbStatus}
           onChange={setAvcbStatus}
@@ -195,7 +205,10 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         address={lead.address}
         lat={lead.lat}
         lng={lead.lng}
-        onApplyStatus={(status) => setAvcbStatus(status)}
+        onApplyResult={(status, tipo) => {
+          setAvcbStatus(status);
+          setTipoLicenca(tipo);
+        }}
       />
 
       <Divider label="Dados da Receita (CNPJ)" labelPosition="left" />
@@ -225,12 +238,12 @@ function BombeirosLookup({
   address,
   lat,
   lng,
-  onApplyStatus,
+  onApplyResult,
 }: {
   address: string | null;
   lat: number | null;
   lng: number | null;
-  onApplyStatus: (status: string) => void;
+  onApplyResult: (status: string, tipo: string) => void;
 }) {
   const { logradouro, numero } = parseLogradouro(address);
   const [municipio, setMunicipio] = useState<string | null>(null);
@@ -317,10 +330,10 @@ function BombeirosLookup({
   }
 
   function handleApplyLicenca(licenca: LicencaBombeiros) {
-    onApplyStatus(inferAvcbStatus(licenca.situacao));
+    onApplyResult(inferAvcbStatus(licenca.situacao), normalizeTipoLicenca(licenca.tipoLicenca));
     notifications.show({
       color: "blue",
-      message: `Status sugerido a partir de "${licenca.situacao}". Confira e clique em Salvar.`,
+      message: `Tipo (${licenca.tipoLicenca}) e status sugeridos a partir de "${licenca.situacao}". Confira e clique em Salvar.`,
     });
   }
 

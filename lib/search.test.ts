@@ -19,6 +19,7 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     photoUrl: null,
     lastReviewSnippet: null,
     pipelineStage: "novo_lead",
+    tipoLicenca: "AVCB",
     avcbStatus: "nao_informado",
     avcbValidade: null,
     assignedUserId: null,

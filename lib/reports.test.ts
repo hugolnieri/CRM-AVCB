@@ -19,6 +19,7 @@ function makeLead(stage: PipelineStage, avcb: AvcbStatus, category: string): Lea
     photoUrl: null,
     lastReviewSnippet: null,
     pipelineStage: stage,
+    tipoLicenca: "AVCB",
     avcbStatus: avcb,
     avcbValidade: null,
     assignedUserId: null,
