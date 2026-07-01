@@ -35,6 +35,15 @@ import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
 import { getErrorMessage } from "@/lib/errors";
 import type { Lead } from "@/types/lead";
 
+interface GeocodeResult {
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  cep: string | null;
+}
+
 interface Props {
   lead: Lead | null;
   onClose: () => void;
@@ -65,7 +74,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
     lead.avcbValidade ? dayjs(lead.avcbValidade).toDate() : null,
   );
   const [noteBody, setNoteBody] = useState("");
-  const [fullAddress, setFullAddress] = useState<string | null>(null);
+  const [fullAddress, setFullAddress] = useState<GeocodeResult | null>(null);
   const [loadingAddress, setLoadingAddress] = useState(false);
 
   const { data: activities, isLoading: loadingActivities } = useActivities(lead.id);
@@ -79,7 +88,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
       const res = await fetch(`/api/geocode?lat=${lead.lat}&lng=${lead.lng}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível buscar o endereço.");
-      setFullAddress(data.address as string);
+      setFullAddress(data as GeocodeResult);
     } catch (err) {
       notifications.show({
         color: "red",
@@ -158,7 +167,9 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
       <AddressRow label="Da importação (Google Maps)" value={lead.address} />
 
-      {fullAddress && <AddressRow label="Endereço completo (com CEP)" value={fullAddress} highlight />}
+      {fullAddress && (
+        <FullAddressCard result={fullAddress} numeroImportado={parseLogradouro(lead.address).numero} />
+      )}
 
       {lead.lat != null && lead.lng != null && (
         <Button
@@ -464,6 +475,71 @@ function CopyableField({ label, value }: { label: string; value: string }) {
         )}
       </CopyButton>
     </Group>
+  );
+}
+
+function FullAddressCard({
+  result,
+  numeroImportado,
+}: {
+  result: GeocodeResult;
+  numeroImportado: string;
+}) {
+  // The geocoder (OpenStreetMap) almost never returns the house number — it
+  // snaps to the road. So we prefer the number from the imported Google Maps
+  // address, falling back to whatever the geocoder gave.
+  const numero = numeroImportado || result.numero || null;
+
+  const lines: { label: string; value: string | null }[] = [
+    { label: "Logradouro", value: result.logradouro },
+    { label: "Número", value: numero },
+    { label: "Bairro", value: result.bairro },
+    { label: "Cidade", value: result.cidade },
+    { label: "Estado", value: result.uf },
+    { label: "CEP", value: result.cep },
+  ].filter((l) => l.value);
+
+  const copyText = lines.map((l) => `${l.label}: ${l.value}`).join("\n");
+
+  return (
+    <Paper withBorder p="sm" radius="md" bg="var(--mantine-color-teal-light)">
+      <Group justify="space-between" align="flex-start" wrap="nowrap" mb="xs">
+        <Text size="xs" c="dimmed">
+          Endereço completo (com CEP)
+        </Text>
+        <CopyButton value={copyText} timeout={2000}>
+          {({ copied, copy }) => (
+            <Tooltip label={copied ? "Copiado!" : "Copiar tudo"} withArrow>
+              <Button
+                size="compact-sm"
+                variant="light"
+                color={copied ? "teal" : "gray"}
+                onClick={copy}
+                leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+              >
+                {copied ? "Copiado" : "Copiar"}
+              </Button>
+            </Tooltip>
+          )}
+        </CopyButton>
+      </Group>
+      <Stack gap={2}>
+        {lines.map((l) => (
+          <Text key={l.label} size="sm">
+            <Text span c="dimmed">
+              {l.label}:{" "}
+            </Text>
+            {l.value}
+          </Text>
+        ))}
+      </Stack>
+      {!numero && (
+        <Text size="xs" c="dimmed" mt="xs">
+          O número não veio automaticamente — confira no endereço da importação acima ou no Google
+          Maps.
+        </Text>
+      )}
+    </Paper>
   );
 }
 
