@@ -57,9 +57,13 @@ export function EditableAddress({ leadId, initial, importedAddress, lat, lng }: 
   const [fields, setFields] = useState<Fields>(fromSaved(initial));
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
+  // True quando o logradouro veio do mapa aberto (OSM) e não da importação do
+  // Google Maps — nesses casos a grafia pode divergir do cadastro dos Bombeiros.
+  const [logradouroNaoConfirmado, setLogradouroNaoConfirmado] = useState(false);
 
   function setField(key: keyof Fields, value: string) {
     setFields((f) => ({ ...f, [key]: value }));
+    if (key === "logradouro") setLogradouroNaoConfirmado(false);
   }
 
   async function handleFetch() {
@@ -85,9 +89,12 @@ export function EditableAddress({ leadId, initial, importedAddress, lat, lng }: 
         uf: data.uf ?? "",
         cep: data.cep ?? "",
       });
+      setLogradouroNaoConfirmado(!hasRealStreet);
       notifications.show({
-        color: "blue",
-        message: "Endereço preenchido. Ajuste o que precisar e clique em Salvar.",
+        color: hasRealStreet ? "blue" : "yellow",
+        message: hasRealStreet
+          ? "Endereço preenchido. Ajuste o que precisar e clique em Salvar."
+          : "Endereço preenchido pelo mapa aberto — confira a grafia do logradouro antes de consultar.",
       });
     } catch (err) {
       notifications.show({
@@ -143,30 +150,38 @@ export function EditableAddress({ leadId, initial, importedAddress, lat, lng }: 
       </Group>
 
       {FIELD_LABELS.map(({ key, label }) => (
-        <Group key={key} align="flex-end" gap="xs" wrap="nowrap">
-          <TextInput
-            label={label}
-            value={fields[key]}
-            onChange={(e) => setField(key, e.currentTarget.value)}
-            style={{ flex: 1 }}
-          />
-          <CopyButton value={fields[key]} timeout={2000}>
-            {({ copied, copy }) => (
-              <Tooltip label={copied ? "Copiado!" : "Copiar"} withArrow>
-                <ActionIcon
-                  variant="light"
-                  size="lg"
-                  color={copied ? "teal" : "gray"}
-                  onClick={copy}
-                  disabled={!fields[key]}
-                  aria-label={`Copiar ${label}`}
-                >
-                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </CopyButton>
-        </Group>
+        <div key={key}>
+          <Group align="flex-end" gap="xs" wrap="nowrap">
+            <TextInput
+              label={label}
+              value={fields[key]}
+              onChange={(e) => setField(key, e.currentTarget.value)}
+              style={{ flex: 1 }}
+            />
+            <CopyButton value={fields[key]} timeout={2000}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? "Copiado!" : "Copiar"} withArrow>
+                  <ActionIcon
+                    variant="light"
+                    size="lg"
+                    color={copied ? "teal" : "gray"}
+                    onClick={copy}
+                    disabled={!fields[key]}
+                    aria-label={`Copiar ${label}`}
+                  >
+                    {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+          {key === "logradouro" && logradouroNaoConfirmado && (
+            <Text size="xs" c="yellow.7" mt={4}>
+              ⚠ Grafia não confirmada (preenchida pelo mapa aberto). Confira o nome da rua antes de
+              consultar os Bombeiros — pode diferir do cadastro oficial.
+            </Text>
+          )}
+        </div>
       ))}
 
       <Button
