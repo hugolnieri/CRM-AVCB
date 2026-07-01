@@ -34,7 +34,7 @@ import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 import { LICENCA_TIPOS, normalizeTipoLicenca } from "@/lib/pipeline/licencaTipo";
 import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
 import { getErrorMessage } from "@/lib/errors";
-import type { Lead } from "@/types/lead";
+import type { EnderecoDetalhado, Lead } from "@/types/lead";
 
 interface Props {
   lead: Lead | null;
@@ -178,6 +178,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
       <BombeirosLookup
         address={lead.address}
+        endereco={lead.enderecoDetalhado}
         lat={lead.lat}
         lng={lead.lng}
         onApplyResult={(status, tipo) => {
@@ -211,17 +212,23 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
 function BombeirosLookup({
   address,
+  endereco,
   lat,
   lng,
   onApplyResult,
 }: {
   address: string | null;
+  endereco: EnderecoDetalhado | null;
   lat: number | null;
   lng: number | null;
   onApplyResult: (status: string, tipo: string) => void;
 }) {
-  const { logradouro, numero } = parseLogradouro(address);
-  const [municipio, setMunicipio] = useState<string | null>(null);
+  // Prefer the manually-edited detailed address; fall back to the imported one.
+  const fallback = parseLogradouro(address);
+  const logradouro = endereco?.logradouro?.trim() || fallback.logradouro;
+  const numero = endereco?.numero?.trim() || fallback.numero;
+  const cidadeSalva = endereco?.cidade?.trim() || null;
+  const [municipio, setMunicipio] = useState<string | null>(cidadeSalva);
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
