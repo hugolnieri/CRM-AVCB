@@ -8,6 +8,7 @@ import type {
   PipelineStage,
 } from "@/types/lead";
 import type { ReceitaData } from "@/types/receita";
+import type { BombeirosConsulta } from "@/types/bombeiros";
 
 interface LeadRow {
   id: string;
@@ -32,6 +33,7 @@ interface LeadRow {
   cnpj: string | null;
   receita_data: ReceitaData | null;
   endereco_detalhado: EnderecoDetalhado | null;
+  bombeiros_consulta: BombeirosConsulta | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -61,6 +63,7 @@ function mapRowToLead(row: LeadRow): Lead {
     cnpj: row.cnpj,
     receitaData: row.receita_data,
     enderecoDetalhado: row.endereco_detalhado,
+    bombeirosConsulta: row.bombeiros_consulta,
     position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -221,6 +224,18 @@ export async function updateLeadEndereco(
   const { error } = await supabase
     .from("leads")
     .update({ endereco_detalhado: enderecoDetalhado })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateLeadBombeiros(
+  id: string,
+  bombeirosConsulta: BombeirosConsulta,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ bombeiros_consulta: bombeirosConsulta })
     .eq("id", id);
   if (error) throw error;
 }

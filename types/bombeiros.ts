@@ -16,6 +16,12 @@ export interface ConsultaBombeirosResult {
   licencas: LicencaBombeiros[];
 }
 
+/** Resultado da última consulta à API, persistido no lead. */
+export interface BombeirosConsulta {
+  licencas: LicencaBombeiros[];
+  consultadoEm: string;
+}
+
 export interface ConsultaBombeirosError {
   ok: false;
   error: string;

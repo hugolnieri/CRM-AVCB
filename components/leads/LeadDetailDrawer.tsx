@@ -22,8 +22,9 @@ import { DateInput } from "@mantine/dates";
 import { IconMapPin, IconPhone, IconCopy, IconCheck, IconFlame } from "@tabler/icons-react";
 import { parseLogradouro, stripStreetTypePrefix, BOMBEIROS_AVCB_URL } from "@/lib/address";
 import { inferAvcbStatus } from "@/lib/bombeiros";
-import type { LicencaBombeiros } from "@/types/bombeiros";
+import type { BombeirosConsulta, LicencaBombeiros } from "@/types/bombeiros";
 import { notifications } from "@mantine/notifications";
+import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
 import { ReceitaLookup } from "@/components/leads/ReceitaLookup";
@@ -31,6 +32,7 @@ import { EditableAddress } from "@/components/leads/EditableAddress";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities, useAddActivity } from "@/hooks/useActivities";
 import { useUpdateLeadAvcb } from "@/hooks/useUpdateLead";
+import { updateLeadBombeiros } from "@/lib/supabase/queries/leads";
 import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 import { LICENCA_TIPOS, normalizeTipoLicenca } from "@/lib/pipeline/licencaTipo";
 import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
@@ -165,8 +167,8 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
           onChange={setAvcbStatus}
         />
         <DateInput
-          label="Validade"
-          placeholder="Selecione a data"
+          label="Validade (opcional)"
+          placeholder="Confirmar com o cliente"
           value={avcbValidade}
           onChange={(value) => setAvcbValidade(value ? dayjs(value).toDate() : null)}
           valueFormat="DD/MM/YYYY"
@@ -178,10 +180,12 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
       </Group>
 
       <BombeirosLookup
+        leadId={lead.id}
         address={lead.address}
         endereco={lead.enderecoDetalhado}
         lat={lead.lat}
         lng={lead.lng}
+        initialConsulta={lead.bombeirosConsulta}
         onApplyResult={(status, tipo) => {
           setAvcbStatus(status);
           setTipoLicenca(tipo);
@@ -212,18 +216,23 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 }
 
 function BombeirosLookup({
+  leadId,
   address,
   endereco,
   lat,
   lng,
+  initialConsulta,
   onApplyResult,
 }: {
+  leadId: string;
   address: string | null;
   endereco: EnderecoDetalhado | null;
   lat: number | null;
   lng: number | null;
+  initialConsulta: BombeirosConsulta | null;
   onApplyResult: (status: string, tipo: string) => void;
 }) {
+  const queryClient = useQueryClient();
   // Prefer the manually-edited detailed address; fall back to the imported one.
   // The Bombeiros search needs the logradouro WITHOUT its "Avenida/Rua" prefix,
   // so strip it from the edited value too (the imported one is already stripped).
@@ -237,7 +246,12 @@ function BombeirosLookup({
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
-  const [apiLicencas, setApiLicencas] = useState<LicencaBombeiros[] | null>(null);
+  const [apiLicencas, setApiLicencas] = useState<LicencaBombeiros[] | null>(
+    initialConsulta?.licencas ?? null,
+  );
+  const [consultadoEm, setConsultadoEm] = useState<string | null>(
+    initialConsulta?.consultadoEm ?? null,
+  );
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Pré-checagem: antes de gastar na API, o usuário revisa/edita os termos exatos.
@@ -321,7 +335,18 @@ function BombeirosLookup({
         setApiLicencas(null);
         return;
       }
-      setApiLicencas(data.licencas as LicencaBombeiros[]);
+      const licencas = data.licencas as LicencaBombeiros[];
+      const agora = new Date().toISOString();
+      setApiLicencas(licencas);
+      setConsultadoEm(agora);
+
+      // Persiste a consulta no lead para ficar salva ao reabrir.
+      try {
+        await updateLeadBombeiros(leadId, { licencas, consultadoEm: agora });
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
+      } catch {
+        // se falhar ao salvar, o resultado ainda aparece nesta sessão
+      }
     } catch (err) {
       setApiError(getErrorMessage(err, "Não foi possível consultar."));
       setApiLicencas(null);
@@ -449,6 +474,11 @@ function BombeirosLookup({
 
       {apiLicencas && apiLicencas.length > 0 && (
         <Stack gap="xs">
+          {consultadoEm && (
+            <Text size="xs" c="dimmed">
+              Consulta salva de {dayjs(consultadoEm).format("DD/MM/YYYY HH:mm")}
+            </Text>
+          )}
           {apiLicencas.map((licenca, i) => (
             <Paper key={i} withBorder p="sm" radius="md">
               <Group justify="space-between" align="flex-start">

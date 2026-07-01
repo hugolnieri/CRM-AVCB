@@ -54,6 +54,7 @@ export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   cnpj: string | null;
   receitaData: import("./receita").ReceitaData | null;
   enderecoDetalhado: EnderecoDetalhado | null;
+  bombeirosConsulta: import("./bombeiros").BombeirosConsulta | null;
   position: number;
   createdAt: string;
   updatedAt: string;
