@@ -1,9 +1,20 @@
 "use client";
 
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { Group } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
+import { LeadCardView } from "@/components/kanban/LeadCard";
 import { useUpdateLeadStage } from "@/hooks/useUpdateLead";
 import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
 import { getErrorMessage } from "@/lib/errors";
@@ -16,11 +27,17 @@ interface Props {
 
 export function KanbanBoard({ leads, onCardClick }: Props) {
   const updateStage = useUpdateLeadStage();
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveLead(leads.find((l) => l.id === event.active.id) ?? null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveLead(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -42,7 +59,13 @@ export function KanbanBoard({ leads, onCardClick }: Props) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveLead(null)}
+    >
       <Group align="flex-start" wrap="nowrap" style={{ overflowX: "auto" }}>
         {PIPELINE_STAGES.map((stage) => (
           <KanbanColumn
@@ -54,6 +77,8 @@ export function KanbanBoard({ leads, onCardClick }: Props) {
           />
         ))}
       </Group>
+
+      <DragOverlay>{activeLead ? <LeadCardView lead={activeLead} overlay /> : null}</DragOverlay>
     </DndContext>
   );
 }

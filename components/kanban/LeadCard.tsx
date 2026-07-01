@@ -3,33 +3,31 @@ import { Card, Text, Group } from "@mantine/core";
 import { AvcbStatusBadge } from "@/components/leads/AvcbStatusBadge";
 import type { Lead } from "@/types/lead";
 
-interface Props {
+/**
+ * Presentational card, with no dnd hooks — reused both inside a column and by
+ * the DragOverlay (which renders a copy that follows the cursor above every
+ * column, so it isn't clipped by the origin column's ScrollArea).
+ */
+export function LeadCardView({
+  lead,
+  dragging = false,
+  overlay = false,
+}: {
   lead: Lead;
-  onClick: (lead: Lead) => void;
-}
-
-export function LeadCard({ lead, onClick }: Props) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: lead.id,
-  });
-
+  dragging?: boolean;
+  overlay?: boolean;
+}) {
   return (
     <Card
-      ref={setNodeRef}
       withBorder
-      shadow="sm"
+      shadow={overlay ? "lg" : "sm"}
       padding="sm"
       mb="xs"
-      onClick={() => onClick(lead)}
       style={{
-        cursor: "pointer",
-        transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 1 : undefined,
-        position: "relative",
+        cursor: "grab",
+        opacity: dragging ? 0.4 : 1,
+        width: overlay ? 228 : undefined,
       }}
-      {...listeners}
-      {...attributes}
     >
       <Text fw={500} size="sm">
         {lead.name}
@@ -41,5 +39,26 @@ export function LeadCard({ lead, onClick }: Props) {
         <AvcbStatusBadge status={lead.avcbStatus} />
       </Group>
     </Card>
+  );
+}
+
+interface Props {
+  lead: Lead;
+  onClick: (lead: Lead) => void;
+}
+
+export function LeadCard({ lead, onClick }: Props) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={() => onClick(lead)}
+      style={{ touchAction: "none" }}
+      {...listeners}
+      {...attributes}
+    >
+      <LeadCardView lead={lead} dragging={isDragging} />
+    </div>
   );
 }
