@@ -13,6 +13,7 @@ import {
   Stack,
   Text,
   Textarea,
+  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -239,6 +240,12 @@ function BombeirosLookup({
   const [apiLicencas, setApiLicencas] = useState<LicencaBombeiros[] | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Pré-checagem: antes de gastar na API, o usuário revisa/edita os termos exatos.
+  const [confirming, setConfirming] = useState(false);
+  const [searchLogradouro, setSearchLogradouro] = useState("");
+  const [searchNumero, setSearchNumero] = useState("");
+  const [searchMunicipio, setSearchMunicipio] = useState("");
+
   async function fetchMunicipio(): Promise<string | null> {
     if (municipio) return municipio;
     if (lat == null || lng == null) return null;
@@ -277,29 +284,36 @@ function BombeirosLookup({
     openBombeiros(muni);
   }
 
-  async function handleConsultApi(comNumero: boolean) {
+  // Passo 1: abre a pré-checagem com os termos preenchidos (sem gastar nada).
+  async function handleOpenCheck() {
     const muni = await fetchMunicipio();
-    if (!muni) {
+    setSearchLogradouro(logradouro);
+    setSearchNumero(numero);
+    setSearchMunicipio(muni ?? "");
+    setConfirming(true);
+  }
+
+  // Passo 2: consulta paga com os termos revisados/editados pelo usuário.
+  async function handleConfirmSearch() {
+    if (!searchLogradouro.trim() || !searchMunicipio.trim()) {
       notifications.show({
         color: "red",
-        message: "Não foi possível identificar o município para essa consulta.",
+        message: "Informe ao menos o logradouro e a cidade.",
       });
       return;
     }
-
-    const numeroUsado = comNumero ? numero : "";
-    const confirmed = window.confirm(
-      `Essa consulta é paga (~R$ 0,20, debitado do seu saldo na Infosimples).\n\nMunicípio: ${muni}\nLogradouro: ${logradouro}\nNúmero: ${numeroUsado || "(sem número — retorna toda a rua)"}\n\nConfirmar consulta?`,
-    );
-    if (!confirmed) return;
-
+    setConfirming(false);
     setApiLoading(true);
     setApiError(null);
     try {
       const res = await fetch("/api/bombeiros", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ municipio: muni, endereco: logradouro, numero: numeroUsado }),
+        body: JSON.stringify({
+          municipio: searchMunicipio.trim(),
+          endereco: searchLogradouro.trim(),
+          numero: searchNumero.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -370,16 +384,55 @@ function BombeirosLookup({
 
       <Divider label="ou" labelPosition="center" />
 
-      <Button
-        variant="light"
-        color="grape"
-        leftSection={<IconFlame size={16} />}
-        loading={apiLoading}
-        onClick={() => handleConsultApi(true)}
-        fullWidth
-      >
-        Consultar via API (~R$ 0,20/consulta)
-      </Button>
+      {!confirming ? (
+        <Button
+          variant="light"
+          color="grape"
+          leftSection={<IconFlame size={16} />}
+          loading={apiLoading || loading}
+          onClick={handleOpenCheck}
+          fullWidth
+        >
+          Consultar via API (~R$ 0,20/consulta)
+        </Button>
+      ) : (
+        <Paper withBorder p="sm" radius="md">
+          <Text size="sm" fw={500} mb={4}>
+            Confira antes de consultar
+          </Text>
+          <Text size="xs" c="dimmed" mb="sm">
+            Revise os termos (a grafia da rua precisa bater com o cadastro dos Bombeiros). Deixe o
+            número em branco para buscar a rua inteira. Só é cobrado ao confirmar.
+          </Text>
+          <Stack gap="xs">
+            <TextInput
+              label="Logradouro (sem Rua/Av.)"
+              value={searchLogradouro}
+              onChange={(e) => setSearchLogradouro(e.currentTarget.value)}
+            />
+            <Group grow>
+              <TextInput
+                label="Número (opcional)"
+                value={searchNumero}
+                onChange={(e) => setSearchNumero(e.currentTarget.value)}
+              />
+              <TextInput
+                label="Cidade"
+                value={searchMunicipio}
+                onChange={(e) => setSearchMunicipio(e.currentTarget.value)}
+              />
+            </Group>
+            <Group>
+              <Button color="grape" loading={apiLoading} onClick={handleConfirmSearch}>
+                Confirmar consulta (R$ 0,20)
+              </Button>
+              <Button variant="subtle" color="gray" onClick={() => setConfirming(false)}>
+                Cancelar
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      )}
 
       {apiError && (
         <Text size="sm" c="red">
@@ -388,25 +441,10 @@ function BombeirosLookup({
       )}
 
       {apiLicencas && apiLicencas.length === 0 && (
-        <Stack gap="xs">
-          <Text size="sm" c="dimmed">
-            Nenhuma licença encontrada para esse endereço. Isso costuma acontecer quando o número não
-            bate exatamente com o cadastro, ou o nome da rua difere do oficial. Tente buscar só pela
-            rua (sem número) ou revise o logradouro no endereço detalhado.
-          </Text>
-          {numero && (
-            <Button
-              variant="light"
-              color="grape"
-              size="compact-sm"
-              loading={apiLoading}
-              onClick={() => handleConsultApi(false)}
-              style={{ alignSelf: "flex-start" }}
-            >
-              Consultar sem número (toda a rua) — R$ 0,20
-            </Button>
-          )}
-        </Stack>
+        <Text size="sm" c="dimmed">
+          Nenhuma licença encontrada. Verifique a grafia da rua (deve bater com o cadastro oficial)
+          ou tente de novo deixando o número em branco (busca a rua inteira).
+        </Text>
       )}
 
       {apiLicencas && apiLicencas.length > 0 && (
