@@ -149,6 +149,8 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         </Anchor>
       </Group>
 
+      {lead.phoneRaw && <CopyableField label="Telefone" value={lead.phoneRaw} />}
+
       <Divider label="Endereço" labelPosition="left" />
 
       <AddressRow label="Da importação (Google Maps)" value={lead.address} />
