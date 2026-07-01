@@ -189,6 +189,24 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         onApplyResult={(status, tipo) => {
           setAvcbStatus(status);
           setTipoLicenca(tipo);
+          // Salva imediatamente com os valores da API — sem precisar clicar em "Salvar".
+          updateAvcb.mutate(
+            {
+              leadId: lead.id,
+              tipoLicenca: tipo as Lead["tipoLicenca"],
+              avcbStatus: status as Lead["avcbStatus"],
+              avcbValidade: avcbValidade ? dayjs(avcbValidade).format("YYYY-MM-DD") : null,
+            },
+            {
+              onSuccess: () =>
+                notifications.show({ color: "green", message: "Licença atualizada automaticamente." }),
+              onError: (err) =>
+                notifications.show({
+                  color: "red",
+                  message: getErrorMessage(err, "Erro ao salvar."),
+                }),
+            },
+          );
         }}
       />
 
