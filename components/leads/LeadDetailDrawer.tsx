@@ -19,7 +19,7 @@ import {
 import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
 import { IconMapPin, IconPhone, IconCopy, IconCheck, IconFlame } from "@tabler/icons-react";
-import { parseLogradouro, BOMBEIROS_AVCB_URL } from "@/lib/address";
+import { parseLogradouro, stripStreetTypePrefix, BOMBEIROS_AVCB_URL } from "@/lib/address";
 import { inferAvcbStatus } from "@/lib/bombeiros";
 import type { LicencaBombeiros } from "@/types/bombeiros";
 import { notifications } from "@mantine/notifications";
@@ -224,8 +224,12 @@ function BombeirosLookup({
   onApplyResult: (status: string, tipo: string) => void;
 }) {
   // Prefer the manually-edited detailed address; fall back to the imported one.
+  // The Bombeiros search needs the logradouro WITHOUT its "Avenida/Rua" prefix,
+  // so strip it from the edited value too (the imported one is already stripped).
   const fallback = parseLogradouro(address);
-  const logradouro = endereco?.logradouro?.trim() || fallback.logradouro;
+  const logradouro = endereco?.logradouro?.trim()
+    ? stripStreetTypePrefix(endereco.logradouro.trim())
+    : fallback.logradouro;
   const numero = endereco?.numero?.trim() || fallback.numero;
   const cidadeSalva = endereco?.cidade?.trim() || null;
   const [municipio, setMunicipio] = useState<string | null>(cidadeSalva);
@@ -273,7 +277,7 @@ function BombeirosLookup({
     openBombeiros(muni);
   }
 
-  async function handleConsultApi() {
+  async function handleConsultApi(comNumero: boolean) {
     const muni = await fetchMunicipio();
     if (!muni) {
       notifications.show({
@@ -283,8 +287,9 @@ function BombeirosLookup({
       return;
     }
 
+    const numeroUsado = comNumero ? numero : "";
     const confirmed = window.confirm(
-      `Essa consulta é paga (~R$ 0,20, debitado do seu saldo na Infosimples).\n\nMunicípio: ${muni}\nLogradouro: ${logradouro}\nNúmero: ${numero || "(não informado)"}\n\nConfirmar consulta?`,
+      `Essa consulta é paga (~R$ 0,20, debitado do seu saldo na Infosimples).\n\nMunicípio: ${muni}\nLogradouro: ${logradouro}\nNúmero: ${numeroUsado || "(sem número — retorna toda a rua)"}\n\nConfirmar consulta?`,
     );
     if (!confirmed) return;
 
@@ -294,7 +299,7 @@ function BombeirosLookup({
       const res = await fetch("/api/bombeiros", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ municipio: muni, endereco: logradouro, numero }),
+        body: JSON.stringify({ municipio: muni, endereco: logradouro, numero: numeroUsado }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -370,7 +375,7 @@ function BombeirosLookup({
         color="grape"
         leftSection={<IconFlame size={16} />}
         loading={apiLoading}
-        onClick={handleConsultApi}
+        onClick={() => handleConsultApi(true)}
         fullWidth
       >
         Consultar via API (~R$ 0,20/consulta)
@@ -383,9 +388,25 @@ function BombeirosLookup({
       )}
 
       {apiLicencas && apiLicencas.length === 0 && (
-        <Text size="sm" c="dimmed">
-          Nenhuma licença encontrada para esse endereço.
-        </Text>
+        <Stack gap="xs">
+          <Text size="sm" c="dimmed">
+            Nenhuma licença encontrada para esse endereço. Isso costuma acontecer quando o número não
+            bate exatamente com o cadastro, ou o nome da rua difere do oficial. Tente buscar só pela
+            rua (sem número) ou revise o logradouro no endereço detalhado.
+          </Text>
+          {numero && (
+            <Button
+              variant="light"
+              color="grape"
+              size="compact-sm"
+              loading={apiLoading}
+              onClick={() => handleConsultApi(false)}
+              style={{ alignSelf: "flex-start" }}
+            >
+              Consultar sem número (toda a rua) — R$ 0,20
+            </Button>
+          )}
+        </Stack>
       )}
 
       {apiLicencas && apiLicencas.length > 0 && (

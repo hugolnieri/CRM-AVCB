@@ -11,6 +11,12 @@
 const STREET_TYPE_PREFIX =
   /^\s*(av|avenida|r|rua|pr|praça|praca|al|alameda|rod|rodovia|trav|travessa|estr|estrada|lgo|largo|pç|pça|via)\.?\s+/i;
 
+/** Removes the street-type prefix ("Avenida", "Rua", "R.", …) — the Bombeiros
+ *  search requires the logradouro without it. */
+export function stripStreetTypePrefix(logradouro: string): string {
+  return logradouro.replace(STREET_TYPE_PREFIX, "").trim();
+}
+
 export function parseLogradouro(address: string | null): { logradouro: string; numero: string } {
   if (!address) return { logradouro: "", numero: "" };
 
@@ -18,7 +24,7 @@ export function parseLogradouro(address: string | null): { logradouro: string; n
   const streetPart = commaIndex >= 0 ? address.slice(0, commaIndex) : address;
   const rest = commaIndex >= 0 ? address.slice(commaIndex + 1) : "";
 
-  const logradouro = streetPart.replace(STREET_TYPE_PREFIX, "").trim();
+  const logradouro = stripStreetTypePrefix(streetPart);
 
   // First number token after the comma (e.g. "957", "51A", "146" from "146 - sala 2").
   const numberMatch = rest.match(/\d+[A-Za-z]?/);
