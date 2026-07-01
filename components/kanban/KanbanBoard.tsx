@@ -76,6 +76,7 @@ export function KanbanBoard({ leads, onCardClick }: Props) {
             label={stage.label}
             leads={leads.filter((l) => l.pipelineStage === stage.value)}
             onCardClick={onCardClick}
+            dragging={activeLead !== null}
           />
         ))}
       </Group>
