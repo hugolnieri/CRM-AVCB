@@ -45,9 +45,9 @@ export function LeadCardView({
   );
 }
 
-/** Selo compacto de follow-up: vermelho se já venceu, azul se ainda está por vir. */
+/** Selo compacto de follow-up: vermelho só se o dia já passou; hoje/futuro em azul. */
 function FollowUpBadge({ followUpAt }: { followUpAt: string }) {
-  const overdue = dayjs(followUpAt).isBefore(dayjs());
+  const overdue = dayjs(followUpAt).isBefore(dayjs(), "day");
   return (
     <Tooltip label={`Retornar em ${dayjs(followUpAt).format("DD/MM/YYYY HH:mm")}`} withArrow>
       <Group gap={3} wrap="nowrap" c={overdue ? "red" : "blue"} style={{ flexShrink: 0 }}>

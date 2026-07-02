@@ -251,6 +251,8 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
             onChange={setFollowUpAt}
             valueFormat="DD/MM/YYYY HH:mm"
             placeholder="Escolha data e hora"
+            // Ao escolher só a data, assume a hora atual em vez de meia-noite.
+            defaultTimeValue={dayjs().format("HH:mm")}
             clearable
           />
           <TextInput
