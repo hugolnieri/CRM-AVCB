@@ -1,4 +1,10 @@
-export type ActivityType = "note" | "call" | "whatsapp" | "visit" | "stage_change";
+export type ActivityType =
+  | "note"
+  | "call"
+  | "whatsapp"
+  | "visit"
+  | "stage_change"
+  | "follow_up";
 
 export interface Activity {
   id: string;

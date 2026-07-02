@@ -34,6 +34,8 @@ interface LeadRow {
   receita_data: ReceitaData | null;
   endereco_detalhado: EnderecoDetalhado | null;
   bombeiros_consulta: BombeirosConsulta | null;
+  follow_up_at: string | null;
+  follow_up_note: string | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -64,6 +66,8 @@ function mapRowToLead(row: LeadRow): Lead {
     receitaData: row.receita_data,
     enderecoDetalhado: row.endereco_detalhado,
     bombeirosConsulta: row.bombeiros_consulta,
+    followUpAt: row.follow_up_at,
+    followUpNote: row.follow_up_note,
     position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -236,6 +240,23 @@ export async function updateLeadBombeiros(
   const { error } = await supabase
     .from("leads")
     .update({ bombeiros_consulta: bombeirosConsulta })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Agenda (ou limpa, passando null) o próximo retorno do lead. `followUpAt` é
+ * um ISO string com data e hora; null remove o follow-up pendente.
+ */
+export async function updateLeadFollowUp(
+  id: string,
+  followUpAt: string | null,
+  followUpNote: string | null,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ follow_up_at: followUpAt, follow_up_note: followUpNote })
     .eq("id", id);
   if (error) throw error;
 }

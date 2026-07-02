@@ -1,5 +1,12 @@
 import { Timeline, Text, Skeleton, Stack } from "@mantine/core";
-import { IconNote, IconPhone, IconBrandWhatsapp, IconMapPin, IconArrowsExchange } from "@tabler/icons-react";
+import {
+  IconNote,
+  IconPhone,
+  IconBrandWhatsapp,
+  IconMapPin,
+  IconArrowsExchange,
+  IconClock,
+} from "@tabler/icons-react";
 import dayjs from "dayjs";
 import type { Activity, ActivityType } from "@/types/activity";
 
@@ -9,6 +16,7 @@ const ICONS: Record<ActivityType, React.ReactNode> = {
   whatsapp: <IconBrandWhatsapp size={14} />,
   visit: <IconMapPin size={14} />,
   stage_change: <IconArrowsExchange size={14} />,
+  follow_up: <IconClock size={14} />,
 };
 
 const TITLES: Record<ActivityType, string> = {
@@ -17,6 +25,7 @@ const TITLES: Record<ActivityType, string> = {
   whatsapp: "WhatsApp",
   visit: "Visita",
   stage_change: "Mudança de etapa",
+  follow_up: "Follow-up",
 };
 
 interface Props {

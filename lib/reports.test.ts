@@ -27,6 +27,8 @@ function makeLead(stage: PipelineStage, avcb: AvcbStatus, category: string): Lea
     receitaData: null,
     enderecoDetalhado: null,
     bombeirosConsulta: null,
+    followUpAt: null,
+    followUpNote: null,
     position: 0,
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",

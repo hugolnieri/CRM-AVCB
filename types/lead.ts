@@ -55,6 +55,9 @@ export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
   receitaData: import("./receita").ReceitaData | null;
   enderecoDetalhado: EnderecoDetalhado | null;
   bombeirosConsulta: import("./bombeiros").BombeirosConsulta | null;
+  /** Data/hora do próximo retorno agendado (ISO). Null = sem follow-up pendente. */
+  followUpAt: string | null;
+  followUpNote: string | null;
   position: number;
   createdAt: string;
   updatedAt: string;

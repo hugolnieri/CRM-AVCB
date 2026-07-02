@@ -19,6 +19,7 @@ import {
   IconList,
   IconUsers,
   IconReportAnalytics,
+  IconCalendarClock,
   IconLogout,
   IconSun,
   IconMoon,
@@ -29,6 +30,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
+  { href: "/agenda", label: "Agenda", icon: IconCalendarClock },
   { href: "/import", label: "Importar", icon: IconUpload },
   { href: "/leads", label: "Leads", icon: IconList },
   { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLeadAvcb, moveLead } from "@/lib/supabase/queries/leads";
+import { updateLeadAvcb, updateLeadFollowUp, moveLead } from "@/lib/supabase/queries/leads";
 import { addActivity } from "@/lib/supabase/queries/activities";
 import type { AvcbStatus, Lead, LicencaTipo, PipelineStage } from "@/types/lead";
 
@@ -78,6 +78,34 @@ export function useUpdateLeadAvcb() {
       avcbStatus: AvcbStatus;
       avcbValidade: string | null;
     }) => updateLeadAvcb(leadId, tipoLicenca, avcbStatus, avcbValidade),
+    onSuccess: (_data, { leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+    },
+  });
+}
+
+export function useUpdateLeadFollowUp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      leadId,
+      followUpAt,
+      followUpNote,
+    }: {
+      leadId: string;
+      followUpAt: string | null;
+      followUpNote: string | null;
+    }) => {
+      await updateLeadFollowUp(leadId, followUpAt, followUpNote);
+      // Registra no histórico do lead: agendamento ou conclusão do retorno.
+      if (followUpAt) {
+        await addActivity(leadId, "follow_up", followUpNote, { follow_up_at: followUpAt });
+      } else {
+        await addActivity(leadId, "follow_up", "Retorno concluído/removido", { cleared: true });
+      }
+    },
     onSuccess: (_data, { leadId }) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["activities", leadId] });

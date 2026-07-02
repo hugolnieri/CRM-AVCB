@@ -7,6 +7,7 @@ import { useLeads } from "@/hooks/useLeads";
 import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
 import { LeadsTable } from "@/components/leads/LeadsTable";
 import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
+import { FollowUpList } from "@/components/leads/FollowUpList";
 import type { Lead } from "@/types/lead";
 
 export default function DashboardPage() {
@@ -50,6 +51,17 @@ export default function DashboardPage() {
           </Card>
         ))}
       </SimpleGrid>
+
+      <Group mt="md">
+        <Title order={3}>Retornos</Title>
+      </Group>
+
+      <FollowUpList
+        leads={leads ?? []}
+        onLeadClick={setSelectedLead}
+        buckets={["atrasado", "hoje", "proximos"]}
+        emptyMessage="Nenhum retorno para os próximos dias. Veja todos na aba Agenda."
+      />
 
       <Group mt="md">
         <Title order={3} c="red">

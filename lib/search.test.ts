@@ -27,6 +27,8 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     receitaData: null,
     enderecoDetalhado: null,
     bombeirosConsulta: null,
+    followUpAt: null,
+    followUpNote: null,
     position: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",

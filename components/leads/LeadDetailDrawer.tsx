@@ -18,7 +18,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { DateInput } from "@mantine/dates";
+import { DateInput, DateTimePicker } from "@mantine/dates";
 import {
   IconMapPin,
   IconPhone,
@@ -27,6 +27,7 @@ import {
   IconFlame,
   IconChevronLeft,
   IconChevronRight,
+  IconClock,
 } from "@tabler/icons-react";
 import { parseLogradouro, stripStreetTypePrefix, BOMBEIROS_AVCB_URL } from "@/lib/address";
 import { inferAvcbStatus } from "@/lib/bombeiros";
@@ -39,7 +40,11 @@ import { ReceitaLookup } from "@/components/leads/ReceitaLookup";
 import { EditableAddress } from "@/components/leads/EditableAddress";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities, useAddActivity } from "@/hooks/useActivities";
-import { useUpdateLeadAvcb, useUpdateLeadStage } from "@/hooks/useUpdateLead";
+import {
+  useUpdateLeadAvcb,
+  useUpdateLeadFollowUp,
+  useUpdateLeadStage,
+} from "@/hooks/useUpdateLead";
 import { updateLeadBombeiros } from "@/lib/supabase/queries/leads";
 import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 import { LICENCA_TIPOS, normalizeTipoLicenca } from "@/lib/pipeline/licencaTipo";
@@ -77,11 +82,16 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
   const [avcbValidade, setAvcbValidade] = useState<Date | null>(
     lead.avcbValidade ? dayjs(lead.avcbValidade).toDate() : null,
   );
+  const [followUpAt, setFollowUpAt] = useState<Date | null>(
+    lead.followUpAt ? dayjs(lead.followUpAt).toDate() : null,
+  );
+  const [followUpNote, setFollowUpNote] = useState(lead.followUpNote ?? "");
   const [noteBody, setNoteBody] = useState("");
 
   const { data: activities, isLoading: loadingActivities } = useActivities(lead.id);
   const updateAvcb = useUpdateLeadAvcb();
   const updateStage = useUpdateLeadStage();
+  const updateFollowUp = useUpdateLeadFollowUp();
   const addNote = useAddActivity(lead.id);
 
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.value === lead.pipelineStage);
@@ -128,6 +138,44 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
             color: "red",
             message: getErrorMessage(err, "Erro ao salvar."),
           }),
+      },
+    );
+  }
+
+  function handleSaveFollowUp() {
+    if (!followUpAt) {
+      notifications.show({ color: "red", message: "Escolha a data e hora do retorno." });
+      return;
+    }
+    updateFollowUp.mutate(
+      {
+        leadId: lead.id,
+        followUpAt: dayjs(followUpAt).toISOString(),
+        followUpNote: followUpNote.trim() || null,
+      },
+      {
+        onSuccess: () =>
+          notifications.show({
+            color: "green",
+            message: `Retorno agendado para ${dayjs(followUpAt).format("DD/MM/YYYY HH:mm")}.`,
+          }),
+        onError: (err) =>
+          notifications.show({ color: "red", message: getErrorMessage(err, "Erro ao agendar.") }),
+      },
+    );
+  }
+
+  function handleClearFollowUp() {
+    updateFollowUp.mutate(
+      { leadId: lead.id, followUpAt: null, followUpNote: null },
+      {
+        onSuccess: () => {
+          setFollowUpAt(null);
+          setFollowUpNote("");
+          notifications.show({ color: "gray", message: "Retorno concluído." });
+        },
+        onError: (err) =>
+          notifications.show({ color: "red", message: getErrorMessage(err, "Erro ao concluir.") }),
       },
     );
   }
@@ -187,6 +235,45 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
             <IconChevronRight size={16} />
           </Button>
         </Group>
+      </Paper>
+
+      <Paper withBorder p="sm" radius="md">
+        <Group gap={6} mb={6}>
+          <IconClock size={15} />
+          <Text size="xs" c="dimmed">
+            Retornar em (follow-up)
+          </Text>
+        </Group>
+        <Stack gap="xs">
+          <DateTimePicker
+            value={followUpAt}
+            onChange={(value) => setFollowUpAt(value ? dayjs(value).toDate() : null)}
+            valueFormat="DD/MM/YYYY HH:mm"
+            placeholder="Escolha data e hora"
+            clearable
+          />
+          <TextInput
+            placeholder="Motivo / o que combinou (opcional)"
+            value={followUpNote}
+            onChange={(e) => setFollowUpNote(e.currentTarget.value)}
+          />
+          <Group>
+            <Button size="sm" onClick={handleSaveFollowUp} loading={updateFollowUp.isPending}>
+              {lead.followUpAt ? "Atualizar retorno" : "Agendar retorno"}
+            </Button>
+            {lead.followUpAt && (
+              <Button
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={handleClearFollowUp}
+                loading={updateFollowUp.isPending}
+              >
+                Concluir / remover
+              </Button>
+            )}
+          </Group>
+        </Stack>
       </Paper>
 
       <Group>

@@ -1,5 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
-import { Card, Text, Group } from "@mantine/core";
+import { Card, Text, Group, Tooltip } from "@mantine/core";
+import { IconClock } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import { AvcbStatusBadge } from "@/components/leads/AvcbStatusBadge";
 import type { Lead } from "@/types/lead";
 
@@ -35,10 +37,26 @@ export function LeadCardView({
       <Text size="xs" c="dimmed">
         {lead.category ?? "Sem categoria"}
       </Text>
-      <Group justify="space-between" mt="xs">
+      <Group justify="space-between" mt="xs" wrap="nowrap">
         <AvcbStatusBadge status={lead.avcbStatus} tipo={lead.tipoLicenca} />
+        {lead.followUpAt && <FollowUpBadge followUpAt={lead.followUpAt} />}
       </Group>
     </Card>
+  );
+}
+
+/** Selo compacto de follow-up: vermelho se já venceu, azul se ainda está por vir. */
+function FollowUpBadge({ followUpAt }: { followUpAt: string }) {
+  const overdue = dayjs(followUpAt).isBefore(dayjs());
+  return (
+    <Tooltip label={`Retornar em ${dayjs(followUpAt).format("DD/MM/YYYY HH:mm")}`} withArrow>
+      <Group gap={3} wrap="nowrap" c={overdue ? "red" : "blue"} style={{ flexShrink: 0 }}>
+        <IconClock size={13} />
+        <Text size="xs" fw={500} style={{ whiteSpace: "nowrap" }}>
+          {dayjs(followUpAt).format("DD/MM")}
+        </Text>
+      </Group>
+    </Tooltip>
   );
 }
 
