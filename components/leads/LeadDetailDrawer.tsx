@@ -79,11 +79,11 @@ export function LeadDetailDrawer({ lead, onClose }: Props) {
 function LeadDetailContent({ lead }: { lead: Lead }) {
   const [tipoLicenca, setTipoLicenca] = useState<string | null>(lead.tipoLicenca);
   const [avcbStatus, setAvcbStatus] = useState<string | null>(lead.avcbStatus);
-  const [avcbValidade, setAvcbValidade] = useState<Date | null>(
-    lead.avcbValidade ? dayjs(lead.avcbValidade).toDate() : null,
-  );
-  const [followUpAt, setFollowUpAt] = useState<Date | null>(
-    lead.followUpAt ? dayjs(lead.followUpAt).toDate() : null,
+  // Mantine v9 date inputs trabalham com strings (DateStringValue), não Date.
+  // Guardar Date fazia o horário se perder ao salvar (virava meia-noite).
+  const [avcbValidade, setAvcbValidade] = useState<string | null>(lead.avcbValidade ?? null);
+  const [followUpAt, setFollowUpAt] = useState<string | null>(
+    lead.followUpAt ? dayjs(lead.followUpAt).format("YYYY-MM-DD HH:mm:ss") : null,
   );
   const [followUpNote, setFollowUpNote] = useState(lead.followUpNote ?? "");
   const [noteBody, setNoteBody] = useState("");
@@ -128,7 +128,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         leadId: lead.id,
         tipoLicenca: tipoLicenca as Lead["tipoLicenca"],
         avcbStatus: avcbStatus as Lead["avcbStatus"],
-        avcbValidade: avcbValidade ? dayjs(avcbValidade).format("YYYY-MM-DD") : null,
+        avcbValidade: avcbValidade || null,
       },
       {
         onSuccess: () =>
@@ -150,6 +150,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
     updateFollowUp.mutate(
       {
         leadId: lead.id,
+        // followUpAt é hora local ("YYYY-MM-DD HH:mm:ss"); guardamos em ISO/UTC.
         followUpAt: dayjs(followUpAt).toISOString(),
         followUpNote: followUpNote.trim() || null,
       },
@@ -247,7 +248,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
         <Stack gap="xs">
           <DateTimePicker
             value={followUpAt}
-            onChange={(value) => setFollowUpAt(value ? dayjs(value).toDate() : null)}
+            onChange={setFollowUpAt}
             valueFormat="DD/MM/YYYY HH:mm"
             placeholder="Escolha data e hora"
             clearable
@@ -329,7 +330,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
           label="Validade (opcional)"
           placeholder="Confirmar com o cliente"
           value={avcbValidade}
-          onChange={(value) => setAvcbValidade(value ? dayjs(value).toDate() : null)}
+          onChange={setAvcbValidade}
           valueFormat="DD/MM/YYYY"
           clearable
         />
@@ -354,7 +355,7 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
               leadId: lead.id,
               tipoLicenca: tipo as Lead["tipoLicenca"],
               avcbStatus: status as Lead["avcbStatus"],
-              avcbValidade: avcbValidade ? dayjs(avcbValidade).format("YYYY-MM-DD") : null,
+              avcbValidade: avcbValidade || null,
             },
             {
               onSuccess: () =>
