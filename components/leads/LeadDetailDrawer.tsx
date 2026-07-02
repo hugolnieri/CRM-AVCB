@@ -6,8 +6,8 @@ import {
   Button,
   CopyButton,
   Divider,
-  Drawer,
   Group,
+  Modal,
   Paper,
   Select,
   Stack,
@@ -19,7 +19,15 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { DateInput } from "@mantine/dates";
-import { IconMapPin, IconPhone, IconCopy, IconCheck, IconFlame } from "@tabler/icons-react";
+import {
+  IconMapPin,
+  IconPhone,
+  IconCopy,
+  IconCheck,
+  IconFlame,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import { parseLogradouro, stripStreetTypePrefix, BOMBEIROS_AVCB_URL } from "@/lib/address";
 import { inferAvcbStatus } from "@/lib/bombeiros";
 import type { BombeirosConsulta, LicencaBombeiros } from "@/types/bombeiros";
@@ -31,11 +39,11 @@ import { ReceitaLookup } from "@/components/leads/ReceitaLookup";
 import { EditableAddress } from "@/components/leads/EditableAddress";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities, useAddActivity } from "@/hooks/useActivities";
-import { useUpdateLeadAvcb } from "@/hooks/useUpdateLead";
+import { useUpdateLeadAvcb, useUpdateLeadStage } from "@/hooks/useUpdateLead";
 import { updateLeadBombeiros } from "@/lib/supabase/queries/leads";
 import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 import { LICENCA_TIPOS, normalizeTipoLicenca } from "@/lib/pipeline/licencaTipo";
-import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
+import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
 import { getErrorMessage } from "@/lib/errors";
 import type { EnderecoDetalhado, Lead } from "@/types/lead";
 
@@ -48,17 +56,18 @@ export function LeadDetailDrawer({ lead, onClose }: Props) {
   const isMobile = useMediaQuery("(max-width: 48em)");
 
   return (
-    <Drawer
+    <Modal
       opened={lead !== null}
       onClose={onClose}
       title={lead ? <Title order={3}>{lead.name}</Title> : null}
-      position="right"
-      size={isMobile ? "100%" : "lg"}
+      size="lg"
+      fullScreen={isMobile}
+      centered
     >
       {/* Keying by lead.id resets all local form state when a different lead is
           opened, without needing an effect to re-sync state from props. */}
       {lead && <LeadDetailContent key={lead.id} lead={lead} />}
-    </Drawer>
+    </Modal>
   );
 }
 
@@ -72,7 +81,36 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
   const { data: activities, isLoading: loadingActivities } = useActivities(lead.id);
   const updateAvcb = useUpdateLeadAvcb();
+  const updateStage = useUpdateLeadStage();
   const addNote = useAddActivity(lead.id);
+
+  const stageIndex = PIPELINE_STAGES.findIndex((s) => s.value === lead.pipelineStage);
+
+  function handleChangeStage(toStage: Lead["pipelineStage"]) {
+    if (toStage === lead.pipelineStage) return;
+    updateStage.mutate(
+      {
+        leadId: lead.id,
+        fromStage: lead.pipelineStage,
+        toStage,
+        // Fresh position so the card jumps to the top of the destination column,
+        // mirroring the drag-and-drop behaviour.
+        position: Date.now(),
+      },
+      {
+        onSuccess: () =>
+          notifications.show({
+            color: "green",
+            message: `Movido para "${PIPELINE_STAGE_LABELS[toStage]}".`,
+          }),
+        onError: (err) =>
+          notifications.show({
+            color: "red",
+            message: getErrorMessage(err, "Erro ao mover o lead."),
+          }),
+      },
+    );
+  }
 
   function handleSaveAvcb() {
     updateAvcb.mutate(
@@ -111,11 +149,45 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
 
   return (
     <Stack>
-      <Group>
-        <Text size="sm" c="dimmed">
-          {lead.category ?? "Sem categoria"} · Etapa: {PIPELINE_STAGE_LABELS[lead.pipelineStage]}
+      <Text size="sm" c="dimmed">
+        {lead.category ?? "Sem categoria"}
+      </Text>
+
+      <Paper withBorder p="sm" radius="md">
+        <Text size="xs" c="dimmed" mb={6}>
+          Etapa do pipeline
         </Text>
-      </Group>
+        <Group gap="xs" align="flex-end" wrap="nowrap">
+          <Button
+            variant="default"
+            size="sm"
+            px="sm"
+            disabled={stageIndex <= 0 || updateStage.isPending}
+            onClick={() => handleChangeStage(PIPELINE_STAGES[stageIndex - 1].value)}
+            aria-label="Etapa anterior"
+          >
+            <IconChevronLeft size={16} />
+          </Button>
+          <Select
+            data={PIPELINE_STAGES.map((s) => ({ value: s.value, label: s.label }))}
+            value={lead.pipelineStage}
+            onChange={(value) => value && handleChangeStage(value as Lead["pipelineStage"])}
+            allowDeselect={false}
+            disabled={updateStage.isPending}
+            style={{ flex: 1 }}
+          />
+          <Button
+            variant="default"
+            size="sm"
+            px="sm"
+            disabled={stageIndex >= PIPELINE_STAGES.length - 1 || updateStage.isPending}
+            onClick={() => handleChangeStage(PIPELINE_STAGES[stageIndex + 1].value)}
+            aria-label="Próxima etapa"
+          >
+            <IconChevronRight size={16} />
+          </Button>
+        </Group>
+      </Paper>
 
       <Group>
         <WhatsAppButton phoneE164={lead.phoneE164} />
