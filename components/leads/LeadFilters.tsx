@@ -1,20 +1,21 @@
 import { Group, Select } from "@mantine/core";
 import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
-import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 
 export interface LeadFiltersValue {
   stage: string | null;
-  avcbStatus: string | null;
-  category: string | null;
+  origem: string | null;
+  cidade: string | null;
 }
 
 interface Props {
   value: LeadFiltersValue;
   onChange: (value: LeadFiltersValue) => void;
-  categoryOptions: string[];
+  /** Origens e cidades presentes nos leads carregados, não uma lista fixa. */
+  origemOptions: string[];
+  cidadeOptions: string[];
 }
 
-export function LeadFilters({ value, onChange, categoryOptions }: Props) {
+export function LeadFilters({ value, onChange, origemOptions, cidadeOptions }: Props) {
   return (
     <Group align="flex-end" grow={false} wrap="wrap">
       <Select
@@ -27,22 +28,23 @@ export function LeadFilters({ value, onChange, categoryOptions }: Props) {
         style={{ flex: "1 1 180px" }}
       />
       <Select
-        label="Status AVCB"
-        placeholder="Todos"
-        clearable
-        data={AVCB_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
-        value={value.avcbStatus}
-        onChange={(avcbStatus) => onChange({ ...value, avcbStatus })}
-        style={{ flex: "1 1 180px" }}
-      />
-      <Select
-        label="Categoria"
+        label="Origem"
         placeholder="Todas"
         clearable
         searchable
-        data={categoryOptions}
-        value={value.category}
-        onChange={(category) => onChange({ ...value, category })}
+        data={origemOptions}
+        value={value.origem}
+        onChange={(origem) => onChange({ ...value, origem })}
+        style={{ flex: "1 1 180px" }}
+      />
+      <Select
+        label="Cidade"
+        placeholder="Todas"
+        clearable
+        searchable
+        data={cidadeOptions}
+        value={value.cidade}
+        onChange={(cidade) => onChange({ ...value, cidade })}
         style={{ flex: "1 1 180px" }}
       />
     </Group>

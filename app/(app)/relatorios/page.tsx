@@ -1,46 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, Group, Loader, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useLeads } from "@/hooks/useLeads";
-import { computeReports, type CountItem } from "@/lib/reports";
-
-function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
-  return (
-    <Card withBorder padding="md">
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      <Text size="xl" fw={700} c={color}>
-        {value}
-      </Text>
-    </Card>
-  );
-}
-
-function BreakdownCard({ title, items }: { title: string; items: CountItem[] }) {
-  const max = Math.max(1, ...items.map((i) => i.count));
-  return (
-    <Card withBorder padding="md">
-      <Text fw={600} mb="sm">
-        {title}
-      </Text>
-      <Stack gap="xs">
-        {items.map((item) => (
-          <div key={item.key}>
-            <Group justify="space-between" gap="xs">
-              <Text size="sm">{item.label}</Text>
-              <Text size="sm" fw={500}>
-                {item.count}
-              </Text>
-            </Group>
-            <Progress value={(item.count / max) * 100} size="sm" mt={2} />
-          </div>
-        ))}
-      </Stack>
-    </Card>
-  );
-}
+import { BreakdownCard, StatCard } from "@/components/shared/StatCard";
+import { computeReports } from "@/lib/reports";
 
 export default function RelatoriosPage() {
   const { data: leads, isLoading, error } = useLeads();
@@ -52,23 +16,29 @@ export default function RelatoriosPage() {
 
   return (
     <Stack>
-      <Title order={2}>Relatórios</Title>
+      <Title order={2}>Relatórios comerciais</Title>
 
-      <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }}>
+      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
         <StatCard label="Total de leads" value={reports.total} />
-        <StatCard label="Clientes (fechados)" value={reports.clientes} color="green" />
         <StatCard label="Em andamento" value={reports.emAndamento} />
+        <StatCard label="Ganhos" value={reports.ganhos} color="green" />
         <StatCard label="Perdidos" value={reports.perdidos} color="red" />
         <StatCard label="Taxa de conversão" value={`${reports.taxaConversao}%`} color="blue" />
-        <StatCard label="AVCB vencidos" value={reports.avcbVencidos} color="red" />
       </SimpleGrid>
+
+      <StatCard
+        label="Valor estimado em aberto"
+        value={reports.valorEmAberto.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })}
+        hint="Soma dos leads que ainda não foram ganhos nem perdidos"
+      />
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <BreakdownCard title="Funil de vendas (por etapa)" items={reports.porEtapa} />
-        <BreakdownCard title="Status do AVCB" items={reports.porAvcb} />
+        <BreakdownCard title="Origem dos leads" items={reports.porOrigem} />
       </SimpleGrid>
-
-      <BreakdownCard title="Top 10 categorias" items={reports.porCategoria} />
     </Stack>
   );
 }

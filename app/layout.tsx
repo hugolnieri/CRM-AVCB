@@ -9,7 +9,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "SEICO",
-  description: "Sistema de prospecção e gestão de clientes de AVCB",
+  description: "CRM de treinamentos e serviços de segurança do trabalho",
 };
 
 export default function RootLayout({

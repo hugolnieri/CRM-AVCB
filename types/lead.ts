@@ -6,59 +6,58 @@ export type PipelineStage =
   | "fechado_ganho"
   | "fechado_perdido";
 
-export type AvcbStatus = "em_dia" | "a_vencer" | "vencido" | "nao_informado";
-
-/** Tipo de licença do Corpo de Bombeiros que o imóvel possui/precisa. */
-export type LicencaTipo = "AVCB" | "CLCB" | "TAACB";
-
-/** Endereço estruturado e editável do lead. */
-export interface EnderecoDetalhado {
-  logradouro: string | null;
-  numero: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  uf: string | null;
-  cep: string | null;
-}
-
-export interface ParsedLead {
-  mapsUrl: string;
-  placeId: string | null;
+/**
+ * Oportunidade comercial ainda não fechada. Quando chega em `fechado_ganho` é
+ * convertida em Cliente (ver lib/conversao.ts); o lead permanece como registro
+ * histórico do funil e o vínculo mora em `clientes.lead_id`.
+ */
+export interface Lead {
+  id: string;
+  /** Nome da empresa (ou do contato, quando ainda não se sabe a razão social). */
   name: string;
-  rating: number | null;
-  reviewCount: number | null;
-  category: string | null;
-  address: string | null;
-  status: string | null;
-  hours: string | null;
+  cnpj: string | null;
+  contatoNome: string | null;
   phoneRaw: string | null;
   phoneE164: string | null;
-  lat: number | null;
-  lng: number | null;
-  photoUrl: string | null;
-  lastReviewSnippet: string | null;
-}
-
-/**
- * The persisted lead. Note this deliberately drops `status`/`hours` from
- * ParsedLead — open/closed business-hours text is only useful at import-preview
- * time and isn't stored (see supabase/migrations/0001_init_schema.sql).
- */
-export interface Lead extends Omit<ParsedLead, "status" | "hours"> {
-  id: string;
+  email: string | null;
+  address: string | null;
+  cidade: string | null;
+  uf: string | null;
+  /** Como chegou: indicação, site, telefone, evento... Ver LEAD_ORIGENS. */
+  origem: string | null;
+  /** Que treinamento ou serviço a empresa procura, em texto livre. */
+  interesse: string | null;
+  valorEstimado: number | null;
   pipelineStage: PipelineStage;
-  tipoLicenca: LicencaTipo;
-  avcbStatus: AvcbStatus;
-  avcbValidade: string | null;
-  assignedUserId: string | null;
-  cnpj: string | null;
-  receitaData: import("./receita").ReceitaData | null;
-  enderecoDetalhado: EnderecoDetalhado | null;
-  bombeirosConsulta: import("./bombeiros").BombeirosConsulta | null;
   /** Data/hora do próximo retorno agendado (ISO). Null = sem follow-up pendente. */
   followUpAt: string | null;
   followUpNote: string | null;
   position: number;
+  assignedUserId: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Campos que a UI escreve. Separado de `Lead` porque id/position/timestamps são
+ * do banco, não do formulário. Usado tanto no create quanto no update parcial.
+ */
+export type LeadInput = Pick<
+  Lead,
+  | "name"
+  | "cnpj"
+  | "contatoNome"
+  | "phoneRaw"
+  | "phoneE164"
+  | "email"
+  | "address"
+  | "cidade"
+  | "uf"
+  | "origem"
+  | "interesse"
+  | "valorEstimado"
+  | "pipelineStage"
+  | "followUpAt"
+  | "followUpNote"
+  | "assignedUserId"
+>;

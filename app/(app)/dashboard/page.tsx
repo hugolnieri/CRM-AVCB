@@ -1,55 +1,56 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
-import dayjs from "dayjs";
+import { useRouter } from "next/navigation";
+import { Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useLeads } from "@/hooks/useLeads";
-import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
-import { LeadsTable } from "@/components/leads/LeadsTable";
-import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
+import { useClientes } from "@/hooks/useClientes";
+import { useTiposTreinamento, useTreinamentos } from "@/hooks/useTreinamentos";
+import { useServicos } from "@/hooks/useServicos";
+import { StatCard } from "@/components/shared/StatCard";
+import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
 import { FollowUpList } from "@/components/leads/FollowUpList";
+import { PENDENCIA_LABELS, computePainel } from "@/lib/painel";
 import type { Lead } from "@/types/lead";
 
-export default function DashboardPage() {
+export default function PainelPage() {
+  const router = useRouter();
   const { data: leads, isLoading } = useLeads();
+  const { data: clientes } = useClientes();
+  const { data: treinamentos } = useTreinamentos();
+  const { data: servicos } = useServicos();
+  const { data: tipos } = useTiposTreinamento();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
-  const stageCounts = useMemo(() => {
-    if (!leads) return [];
-    return PIPELINE_STAGES.map((stage) => ({
-      label: stage.label,
-      count: leads.filter((l) => l.pipelineStage === stage.value).length,
-    }));
-  }, [leads]);
-
-  const overdueLeads = useMemo(() => {
-    if (!leads) return [];
-    return leads
-      .filter((l) => l.avcbStatus === "vencido")
-      .sort((a, b) => {
-        if (!a.avcbValidade) return 1;
-        if (!b.avcbValidade) return -1;
-        return dayjs(a.avcbValidade).diff(dayjs(b.avcbValidade));
-      });
-  }, [leads]);
+  const painel = useMemo(
+    () =>
+      computePainel({
+        clientes: clientes ?? [],
+        treinamentos: treinamentos ?? [],
+        servicos: servicos ?? [],
+        tipos: tipos ?? [],
+        leads: leads ?? [],
+      }),
+    [clientes, treinamentos, servicos, tipos, leads],
+  );
 
   if (isLoading) return <Loader />;
 
   return (
     <Stack>
-      <Title order={2}>Dashboard</Title>
+      <Title order={2}>Painel</Title>
 
-      <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }}>
-        {stageCounts.map((s) => (
-          <Card key={s.label} withBorder padding="md">
-            <Text size="xs" c="dimmed">
-              {s.label}
-            </Text>
-            <Text size="xl" fw={700}>
-              {s.count}
-            </Text>
-          </Card>
-        ))}
+      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
+        <StatCard label="Clientes ativos" value={painel.clientesAtivos} />
+        <StatCard label="Treinamentos realizados" value={painel.treinamentosRealizados} />
+        <StatCard label="Serviços realizados" value={painel.servicosRealizados} />
+        <StatCard
+          label="Próximos vencimentos"
+          value={painel.proximosVencimentos}
+          color="orange"
+          hint="Próximos 30 dias"
+        />
+        <StatCard label="Já venceram" value={painel.vencidos} color="red" />
       </SimpleGrid>
 
       <Group mt="md">
@@ -60,18 +61,46 @@ export default function DashboardPage() {
         leads={leads ?? []}
         onLeadClick={setSelectedLead}
         buckets={["atrasado", "hoje", "proximos"]}
-        emptyMessage="Nenhum retorno para os próximos dias. Veja todos na aba Agenda."
+        emptyMessage="Nenhum retorno para os próximos dias. Veja todos na Agenda."
       />
 
-      <Group mt="md">
-        <Title order={3} c="red">
-          AVCB Vencido — Ação Urgente
-        </Title>
+      <Group mt="md" gap="xs">
+        <Title order={3}>Pendências</Title>
+        {painel.pendencias.length > 0 && (
+          <Badge color="gray" variant="light">
+            {painel.pendencias.length}
+          </Badge>
+        )}
       </Group>
 
-      <LeadsTable leads={overdueLeads} onRowClick={setSelectedLead} />
+      {painel.pendencias.length === 0 ? (
+        <Text c="dimmed">Nada pendente. Tudo em dia.</Text>
+      ) : (
+        <Stack gap="xs">
+          {painel.pendencias.map((pendencia) => {
+            const meta = PENDENCIA_LABELS[pendencia.tipo];
+            return (
+              <Card
+                key={pendencia.id}
+                withBorder
+                padding="sm"
+                radius="md"
+                onClick={() => router.push(pendencia.href)}
+                style={{ cursor: "pointer" }}
+              >
+                <Group gap="sm" wrap="nowrap">
+                  <Badge color={meta.color} variant="light" style={{ flexShrink: 0 }}>
+                    {meta.label}
+                  </Badge>
+                  <Text size="sm">{pendencia.descricao}</Text>
+                </Group>
+              </Card>
+            );
+          })}
+        </Stack>
+      )}
 
-      <LeadDetailDrawer
+      <LeadDetailModal
         lead={selectedLead ? (leads?.find((l) => l.id === selectedLead.id) ?? selectedLead) : null}
         onClose={() => setSelectedLead(null)}
       />

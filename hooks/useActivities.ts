@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addActivity, fetchActivitiesForLead } from "@/lib/supabase/queries/activities";
-import type { ActivityType } from "@/types/activity";
+import { addActivity, fetchActivities } from "@/lib/supabase/queries/activities";
+import { ownerKey, type ActivityOwner, type ActivityType } from "@/types/activity";
 
-export function useActivities(leadId: string | null) {
+/** ["activities", "lead", id] ou ["activities", "cliente", id]. */
+export function activitiesQueryKey(owner: ActivityOwner) {
+  return ["activities", ...ownerKey(owner)] as const;
+}
+
+export function useActivities(owner: ActivityOwner | null) {
   return useQuery({
-    queryKey: ["activities", leadId],
-    queryFn: () => fetchActivitiesForLead(leadId as string),
-    enabled: leadId !== null,
+    queryKey: owner ? activitiesQueryKey(owner) : ["activities", "none"],
+    queryFn: () => fetchActivities(owner as ActivityOwner),
+    enabled: owner !== null,
   });
 }
 
-export function useAddActivity(leadId: string | null) {
+export function useAddActivity(owner: ActivityOwner | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -22,9 +27,9 @@ export function useAddActivity(leadId: string | null) {
       activityType: ActivityType;
       body: string | null;
       metadata?: Record<string, unknown>;
-    }) => addActivity(leadId as string, activityType, body, metadata),
+    }) => addActivity(owner as ActivityOwner, activityType, body, metadata),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+      if (owner) queryClient.invalidateQueries({ queryKey: activitiesQueryKey(owner) });
     },
   });
 }

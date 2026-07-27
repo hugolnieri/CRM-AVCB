@@ -2,7 +2,6 @@ import { useDraggable } from "@dnd-kit/core";
 import { Card, Text, Group, Tooltip } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import dayjs from "dayjs";
-import { AvcbStatusBadge } from "@/components/leads/AvcbStatusBadge";
 import type { Lead } from "@/types/lead";
 
 /**
@@ -34,11 +33,19 @@ export function LeadCardView({
       <Text fw={500} size="sm">
         {lead.name}
       </Text>
-      <Text size="xs" c="dimmed">
-        {lead.category ?? "Sem categoria"}
+      <Text size="xs" c="dimmed" lineClamp={2}>
+        {lead.interesse ?? lead.cidade ?? "Sem detalhes"}
       </Text>
       <Group justify="space-between" mt="xs" wrap="nowrap">
-        <AvcbStatusBadge status={lead.avcbStatus} tipo={lead.tipoLicenca} />
+        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+          {lead.valorEstimado !== null
+            ? lead.valorEstimado.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+                maximumFractionDigits: 0,
+              })
+            : ""}
+        </Text>
         {lead.followUpAt && <FollowUpBadge followUpAt={lead.followUpAt} />}
       </Group>
     </Card>

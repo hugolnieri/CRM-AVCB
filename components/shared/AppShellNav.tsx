@@ -8,18 +8,22 @@ import {
   Button,
   Burger,
   ActionIcon,
+  Divider,
   useMantineColorScheme,
   useComputedColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconLayoutDashboard,
-  IconUpload,
   IconLayoutKanban,
   IconList,
   IconUsers,
   IconReportAnalytics,
   IconCalendarClock,
+  IconAlertTriangle,
+  IconCertificate,
+  IconTool,
+  IconSettings,
   IconLogout,
   IconSun,
   IconMoon,
@@ -27,15 +31,45 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useCurrentMember } from "@/hooks/useCurrentMember";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
-  { href: "/agenda", label: "Agenda", icon: IconCalendarClock },
-  { href: "/import", label: "Importar", icon: IconUpload },
-  { href: "/leads", label: "Leads", icon: IconList },
-  { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
-  { href: "/clientes", label: "Clientes", icon: IconUsers },
-  { href: "/relatorios", label: "Relatórios", icon: IconReportAnalytics },
+/**
+ * Os grupos existem porque a lista passou de 10 itens e virou uma parede.
+ * `adminOnly` esconde o item; a barreira real é a RLS (ver
+ * supabase/migrations/0002_auth_rls.sql), não este campo.
+ */
+const NAV_GROUPS: {
+  label: string;
+  items: { href: string; label: string; icon: typeof IconList; adminOnly?: boolean }[];
+}[] = [
+  {
+    label: "Operação",
+    items: [
+      { href: "/dashboard", label: "Painel", icon: IconLayoutDashboard },
+      { href: "/vencimentos", label: "Vencimentos", icon: IconAlertTriangle },
+      { href: "/agenda", label: "Agenda", icon: IconCalendarClock },
+    ],
+  },
+  {
+    label: "Cadastros",
+    items: [
+      { href: "/clientes", label: "Clientes", icon: IconUsers },
+      { href: "/treinamentos", label: "Treinamentos", icon: IconCertificate },
+      { href: "/servicos", label: "Serviços", icon: IconTool },
+    ],
+  },
+  {
+    label: "Comercial",
+    items: [
+      { href: "/leads", label: "Leads", icon: IconList },
+      { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
+      { href: "/relatorios", label: "Relatórios", icon: IconReportAnalytics },
+    ],
+  },
+  {
+    label: "",
+    items: [{ href: "/admin", label: "Administração", icon: IconSettings, adminOnly: true }],
+  },
 ];
 
 export function AppShellNav({ children }: { children: React.ReactNode }) {
@@ -44,6 +78,8 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure(false);
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", { getInitialValueInEffect: true });
+  const { data: member } = useCurrentMember();
+  const isAdmin = member?.role === "admin";
 
   function toggleColorScheme() {
     setColorScheme(computedColorScheme === "dark" ? "light" : "dark");
@@ -95,17 +131,32 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.href}
-            component={Link}
-            href={item.href}
-            label={item.label}
-            leftSection={<item.icon size={18} />}
-            active={pathname.startsWith(item.href)}
-            onClick={closeMobile}
-          />
-        ))}
+        {NAV_GROUPS.map((group) => {
+          const items = group.items.filter((item) => !item.adminOnly || isAdmin);
+          if (items.length === 0) return null;
+
+          return (
+            <div key={group.label || "sem-grupo"}>
+              <Divider
+                label={group.label || undefined}
+                labelPosition="left"
+                my="xs"
+                styles={{ label: { fontSize: 11, textTransform: "uppercase" } }}
+              />
+              {items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  component={Link}
+                  href={item.href}
+                  label={item.label}
+                  leftSection={<item.icon size={18} />}
+                  active={pathname.startsWith(item.href)}
+                  onClick={closeMobile}
+                />
+              ))}
+            </div>
+          );
+        })}
       </AppShell.Navbar>
 
       <AppShell.Main>{children}</AppShell.Main>

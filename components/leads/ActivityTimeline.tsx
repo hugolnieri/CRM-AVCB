@@ -6,10 +6,13 @@ import {
   IconMapPin,
   IconArrowsExchange,
   IconClock,
+  IconUserCheck,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import type { Activity, ActivityType } from "@/types/activity";
 
+// Records exaustivos de propósito: adicionar um valor a ActivityType quebra a
+// compilação aqui até que o ícone e o título existam.
 const ICONS: Record<ActivityType, React.ReactNode> = {
   note: <IconNote size={14} />,
   call: <IconPhone size={14} />,
@@ -17,6 +20,7 @@ const ICONS: Record<ActivityType, React.ReactNode> = {
   visit: <IconMapPin size={14} />,
   stage_change: <IconArrowsExchange size={14} />,
   follow_up: <IconClock size={14} />,
+  converted: <IconUserCheck size={14} />,
 };
 
 const TITLES: Record<ActivityType, string> = {
@@ -26,6 +30,7 @@ const TITLES: Record<ActivityType, string> = {
   visit: "Visita",
   stage_change: "Mudança de etapa",
   follow_up: "Follow-up",
+  converted: "Convertido em cliente",
 };
 
 interface Props {

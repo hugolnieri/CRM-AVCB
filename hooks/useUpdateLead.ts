@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLeadAvcb, updateLeadFollowUp, moveLead } from "@/lib/supabase/queries/leads";
+import { moveLead, updateLead } from "@/lib/supabase/queries/leads";
 import { addActivity } from "@/lib/supabase/queries/activities";
-import type { AvcbStatus, Lead, LicencaTipo, PipelineStage } from "@/types/lead";
+import { activitiesQueryKey } from "@/hooks/useActivities";
+import type { Lead, PipelineStage } from "@/types/lead";
 
 /** Server order: highest position first, then newest — mirror it in the cache. */
 function sortLeads(leads: Lead[]): Lead[] {
@@ -11,6 +12,11 @@ function sortLeads(leads: Lead[]): Lead[] {
   });
 }
 
+/**
+ * A única mutação com caminho otimista escrito à mão, de propósito: o card
+ * precisa pular para o topo da coluna no instante do drop. As demais usam
+ * useCrudMutation, que é genérico e não sabe reordenar o cache.
+ */
 export function useUpdateLeadStage() {
   const queryClient = useQueryClient();
 
@@ -30,7 +36,7 @@ export function useUpdateLeadStage() {
       // Only log an activity when the stage actually changed — dragging a card
       // to reorder it within the same column shouldn't clutter the history.
       if (fromStage !== toStage) {
-        await addActivity(leadId, "stage_change", null, {
+        await addActivity({ leadId }, "stage_change", null, {
           from_stage: fromStage,
           to_stage: toStage,
         });
@@ -58,29 +64,7 @@ export function useUpdateLeadStage() {
     },
     onSettled: (_data, _err, { leadId }) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
-    },
-  });
-}
-
-export function useUpdateLeadAvcb() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      leadId,
-      tipoLicenca,
-      avcbStatus,
-      avcbValidade,
-    }: {
-      leadId: string;
-      tipoLicenca: LicencaTipo;
-      avcbStatus: AvcbStatus;
-      avcbValidade: string | null;
-    }) => updateLeadAvcb(leadId, tipoLicenca, avcbStatus, avcbValidade),
-    onSuccess: (_data, { leadId }) => {
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+      queryClient.invalidateQueries({ queryKey: activitiesQueryKey({ leadId }) });
     },
   });
 }
@@ -98,17 +82,17 @@ export function useUpdateLeadFollowUp() {
       followUpAt: string | null;
       followUpNote: string | null;
     }) => {
-      await updateLeadFollowUp(leadId, followUpAt, followUpNote);
+      await updateLead(leadId, { followUpAt, followUpNote });
       // Registra no histórico do lead: agendamento ou conclusão do retorno.
       if (followUpAt) {
-        await addActivity(leadId, "follow_up", followUpNote, { follow_up_at: followUpAt });
+        await addActivity({ leadId }, "follow_up", followUpNote, { follow_up_at: followUpAt });
       } else {
-        await addActivity(leadId, "follow_up", "Retorno concluído/removido", { cleared: true });
+        await addActivity({ leadId }, "follow_up", "Retorno concluído/removido", { cleared: true });
       }
     },
     onSuccess: (_data, { leadId }) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+      queryClient.invalidateQueries({ queryKey: activitiesQueryKey({ leadId }) });
     },
   });
 }

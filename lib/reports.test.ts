@@ -1,59 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { computeReports } from "./reports";
-import type { Lead, PipelineStage, AvcbStatus } from "@/types/lead";
+import { makeLead } from "./testFixtures";
+import type { Lead, PipelineStage } from "@/types/lead";
 
-function makeLead(stage: PipelineStage, avcb: AvcbStatus, category: string): Lead {
-  return {
-    id: Math.random().toString(),
-    placeId: null,
-    mapsUrl: "x",
-    name: "Lead",
-    category,
-    rating: null,
-    reviewCount: null,
-    phoneRaw: null,
-    phoneE164: null,
-    address: null,
-    lat: null,
-    lng: null,
-    photoUrl: null,
-    lastReviewSnippet: null,
-    pipelineStage: stage,
-    tipoLicenca: "AVCB",
-    avcbStatus: avcb,
-    avcbValidade: null,
-    assignedUserId: null,
-    cnpj: null,
-    receitaData: null,
-    enderecoDetalhado: null,
-    bombeirosConsulta: null,
-    followUpAt: null,
-    followUpNote: null,
-    position: 0,
-    createdAt: "2026-01-01",
-    updatedAt: "2026-01-01",
-  };
+function lead(stage: PipelineStage, origem: string, valorEstimado: number | null = null): Lead {
+  return makeLead({ id: Math.random().toString(), pipelineStage: stage, origem, valorEstimado });
 }
 
 describe("computeReports", () => {
   const leads: Lead[] = [
-    makeLead("fechado_ganho", "em_dia", "Supermercado"),
-    makeLead("fechado_ganho", "vencido", "Supermercado"),
-    makeLead("fechado_perdido", "vencido", "Loja de ferramentas"),
-    makeLead("novo_lead", "nao_informado", "Padaria"),
-    makeLead("contato_feito", "vencido", "Padaria"),
+    lead("fechado_ganho", "indicacao", 5000),
+    lead("fechado_ganho", "indicacao", 3000),
+    lead("fechado_perdido", "site", 1000),
+    lead("novo_lead", "site", 2000),
+    lead("contato_feito", "telefone", 800),
   ];
   const r = computeReports(leads);
 
-  it("counts totals, clientes, perdidos and em andamento", () => {
+  it("counts totals, ganhos, perdidos and em andamento", () => {
     expect(r.total).toBe(5);
-    expect(r.clientes).toBe(2);
+    expect(r.ganhos).toBe(2);
     expect(r.perdidos).toBe(1);
     expect(r.emAndamento).toBe(2);
-  });
-
-  it("counts AVCB vencidos", () => {
-    expect(r.avcbVencidos).toBe(3);
   });
 
   it("computes conversion rate as ganhos / (ganhos + perdidos)", () => {
@@ -61,13 +29,25 @@ describe("computeReports", () => {
     expect(r.taxaConversao).toBe(67);
   });
 
-  it("ranks categories by count", () => {
-    expect(r.porCategoria[0]).toEqual({ key: "Supermercado", label: "Supermercado", count: 2 });
+  it("sums valorEstimado of open leads only", () => {
+    // 2000 (novo_lead) + 800 (contato_feito); ganhos e perdidos ficam de fora.
+    expect(r.valorEmAberto).toBe(2800);
+  });
+
+  it("ranks origens by count", () => {
+    expect(r.porOrigem[0]).toEqual({ key: "indicacao", label: "indicacao", count: 2 });
+  });
+
+  it("buckets leads with no origem under 'Não informada'", () => {
+    const r2 = computeReports([lead("novo_lead", null as unknown as string)]);
+    expect(r2.porOrigem[0].label).toBe("Não informada");
   });
 
   it("handles an empty list without dividing by zero", () => {
     const empty = computeReports([]);
     expect(empty.total).toBe(0);
     expect(empty.taxaConversao).toBe(0);
+    expect(empty.valorEmAberto).toBe(0);
+    expect(empty.porOrigem).toEqual([]);
   });
 });

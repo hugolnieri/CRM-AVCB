@@ -53,19 +53,19 @@ export default function LoginPage() {
         router.push("/dashboard");
         router.refresh();
       } else {
+        // The profile row in team_members is created by the on_auth_user_created
+        // trigger (see supabase/migrations/0002_auth_rls.sql). We pass full_name
+        // through user metadata so the trigger can populate it — doing the insert
+        // client-side here failed whenever email confirmation was on (no session
+        // yet, RLS blocks it). The first user to sign up becomes admin.
         const { data, error } = await supabase.auth.signUp({
           email: values.email,
           password: values.password,
+          options: {
+            data: { full_name: values.fullName.trim() },
+          },
         });
         if (error) throw error;
-
-        if (data.user) {
-          await supabase.from("team_members").upsert({
-            id: data.user.id,
-            full_name: values.fullName,
-            email: values.email,
-          });
-        }
 
         if (data.session) {
           router.push("/dashboard");

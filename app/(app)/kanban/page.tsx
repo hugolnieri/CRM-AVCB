@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+import { Loader, Stack, Text, Title } from "@mantine/core";
 import { useLeads } from "@/hooks/useLeads";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
+import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
+import { SearchInput } from "@/components/shared/SearchInput";
 import { leadMatchesQuery } from "@/lib/search";
 import type { Lead } from "@/types/lead";
 
@@ -28,17 +28,16 @@ export default function KanbanPage() {
 
       {leads && (
         <>
-          <TextInput
-            placeholder="Buscar por nome, cidade, categoria, telefone, CNPJ..."
-            leftSection={<IconSearch size={16} />}
+          <SearchInput
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={setSearch}
+            placeholder="Buscar por empresa, contato, cidade, telefone, CNPJ..."
           />
           <KanbanBoard leads={filteredLeads} onCardClick={setSelectedLead} />
         </>
       )}
 
-      <LeadDetailDrawer
+      <LeadDetailModal
         lead={selectedLead ? (leads?.find((l) => l.id === selectedLead.id) ?? selectedLead) : null}
         onClose={() => setSelectedLead(null)}
       />

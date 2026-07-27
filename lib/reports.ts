@@ -1,6 +1,5 @@
-import type { AvcbStatus, Lead, PipelineStage } from "@/types/lead";
+import type { Lead, PipelineStage } from "@/types/lead";
 import { PIPELINE_STAGES } from "@/lib/pipeline/stages";
-import { AVCB_STATUSES } from "@/lib/pipeline/avcbStatus";
 
 export interface CountItem {
   key: string;
@@ -10,14 +9,15 @@ export interface CountItem {
 
 export interface LeadReports {
   total: number;
-  clientes: number;
+  ganhos: number;
   perdidos: number;
   emAndamento: number;
-  avcbVencidos: number;
-  taxaConversao: number; // 0-100, fechados ganhos / (ganhos + perdidos)
+  /** 0-100, fechados ganhos / (ganhos + perdidos). */
+  taxaConversao: number;
+  /** Soma de valorEstimado dos leads ainda em aberto. */
+  valorEmAberto: number;
   porEtapa: CountItem[];
-  porAvcb: CountItem[];
-  porCategoria: CountItem[];
+  porOrigem: CountItem[];
 }
 
 export function computeReports(leads: Lead[]): LeadReports {
@@ -26,13 +26,16 @@ export function computeReports(leads: Lead[]): LeadReports {
   const stageCount = (stage: PipelineStage) =>
     leads.filter((l) => l.pipelineStage === stage).length;
 
-  const clientes = stageCount("fechado_ganho");
+  const ganhos = stageCount("fechado_ganho");
   const perdidos = stageCount("fechado_perdido");
-  const emAndamento = total - clientes - perdidos;
-  const avcbVencidos = leads.filter((l) => l.avcbStatus === "vencido").length;
+  const emAndamento = total - ganhos - perdidos;
 
-  const decididos = clientes + perdidos;
-  const taxaConversao = decididos > 0 ? Math.round((clientes / decididos) * 100) : 0;
+  const decididos = ganhos + perdidos;
+  const taxaConversao = decididos > 0 ? Math.round((ganhos / decididos) * 100) : 0;
+
+  const valorEmAberto = leads
+    .filter((l) => l.pipelineStage !== "fechado_ganho" && l.pipelineStage !== "fechado_perdido")
+    .reduce((sum, l) => sum + (l.valorEstimado ?? 0), 0);
 
   const porEtapa: CountItem[] = PIPELINE_STAGES.map((s) => ({
     key: s.value,
@@ -40,31 +43,15 @@ export function computeReports(leads: Lead[]): LeadReports {
     count: stageCount(s.value),
   }));
 
-  const porAvcb: CountItem[] = AVCB_STATUSES.map((s) => ({
-    key: s.value,
-    label: s.label,
-    count: leads.filter((l) => l.avcbStatus === (s.value as AvcbStatus)).length,
-  }));
-
-  const categoryMap = new Map<string, number>();
+  const origemMap = new Map<string, number>();
   for (const lead of leads) {
-    const cat = lead.category ?? "Sem categoria";
-    categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + 1);
+    const origem = lead.origem ?? "Não informada";
+    origemMap.set(origem, (origemMap.get(origem) ?? 0) + 1);
   }
-  const porCategoria: CountItem[] = Array.from(categoryMap.entries())
+  const porOrigem: CountItem[] = Array.from(origemMap.entries())
     .map(([label, count]) => ({ key: label, label, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  return {
-    total,
-    clientes,
-    perdidos,
-    emAndamento,
-    avcbVencidos,
-    taxaConversao,
-    porEtapa,
-    porAvcb,
-    porCategoria,
-  };
+  return { total, ganhos, perdidos, emAndamento, taxaConversao, valorEmAberto, porEtapa, porOrigem };
 }
