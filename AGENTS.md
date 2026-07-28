@@ -122,6 +122,31 @@ Notificação nunca derruba a ação que a originou: `registrarNotificacao` é
 best-effort e o envio é `catch`-ado. Fechar um cliente não pode falhar porque o
 e-mail caiu.
 
+## Metas
+
+Modeladas como **métrica × período × alvo × pessoa** (`metas`), não uma tabela
+por tipo de meta. "Contatar 40 leads por dia" e "fechar 20 mil no mês" são a
+mesma estrutura — adicionar um tipo novo de meta é adicionar um valor ao enum
+`meta_metrica` e um `case` em `calcularRealizado`, nunca uma migration de tabela.
+
+`member_id` nulo = meta da equipe: vale para todos, cada um com o próprio
+progresso. Evita duplicar a mesma meta por pessoa.
+
+**Progresso nunca é armazenado** — `lib/metas.ts` deriva de activities/leads/
+serviços a cada leitura, pela mesma razão de `situacaoCliente`. Uma coluna de
+progresso estaria errada no instante seguinte a qualquer registro.
+
+`contatos_lead` conta leads **distintos**; `atividades` conta interações. Cinco
+ligações para a mesma empresa são 1 lead contatado e 5 atividades.
+
+Janela do período é de **calendário** (semana corrente, mês corrente), ao
+contrário de `lib/vencimentos.ts`, que usa janela móvel — lá não existe "a semana
+do vencimento", só distância até ele. A semana é calculada com `.day()` e não
+`.startOf("week")`, pelo motivo de locale descrito acima.
+
+Metas aparecem no Painel e na Agenda, **não como evento do calendário**: uma meta
+diária marcaria todos os dias do mês e afogaria os compromissos reais.
+
 ## Jornada de trabalho
 
 Início e fim de jornada são **ação explícita** (botão no Painel), não derivados

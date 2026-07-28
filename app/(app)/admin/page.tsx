@@ -27,6 +27,7 @@ import {
   IconClockHour4,
   IconListDetails,
   IconPlus,
+  IconTargetArrow,
   IconUsers,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
@@ -41,6 +42,7 @@ import {
 import { useActivitiesRecentes } from "@/hooks/useActivities";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { RequireAdmin } from "@/components/shared/RequireAdmin";
+import { MetasAdmin } from "@/components/metas/MetasAdmin";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
 import { setMemberRole } from "@/lib/supabase/queries/team";
@@ -61,6 +63,9 @@ export default function AdminPage() {
             <Tabs.Tab value="relatorios" leftSection={<IconChartBar size={14} />}>
               Relatórios
             </Tabs.Tab>
+            <Tabs.Tab value="metas" leftSection={<IconTargetArrow size={14} />}>
+              Metas
+            </Tabs.Tab>
             <Tabs.Tab value="jornada" leftSection={<IconClockHour4 size={14} />}>
               Jornada
             </Tabs.Tab>
@@ -77,6 +82,9 @@ export default function AdminPage() {
 
           <Tabs.Panel value="relatorios" pt="md">
             <RelatoriosTab />
+          </Tabs.Panel>
+          <Tabs.Panel value="metas" pt="md">
+            <MetasAdmin />
           </Tabs.Panel>
           <Tabs.Panel value="jornada" pt="md">
             <JornadaTab />

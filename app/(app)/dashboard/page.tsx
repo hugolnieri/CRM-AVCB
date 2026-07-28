@@ -11,6 +11,7 @@ import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
 import { FollowUpList } from "@/components/leads/FollowUpList";
 import { VencimentosKanban } from "@/components/painel/VencimentosKanban";
 import { JornadaControl } from "@/components/jornada/JornadaControl";
+import { MetasProgresso } from "@/components/metas/MetasProgresso";
 import { PENDENCIA_LABELS, computePainel } from "@/lib/painel";
 import { clientesPorSituacao, itensVenciveis } from "@/lib/vencimentos";
 import type { Lead } from "@/types/lead";
@@ -60,6 +61,8 @@ export default function PainelPage() {
         />
         <StatCard label="Já venceram" value={painel.vencidos} color="red" />
       </SimpleGrid>
+
+      <MetasProgresso compacto />
 
       <Group mt="md" justify="space-between">
         <Title order={3}>Conformidade da carteira</Title>

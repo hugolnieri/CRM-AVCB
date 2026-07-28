@@ -25,6 +25,7 @@ import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
 import { FollowUpList } from "@/components/leads/FollowUpList";
 import { ServicoForm } from "@/components/servicos/ServicoForm";
+import { MetasProgresso } from "@/components/metas/MetasProgresso";
 import {
   AgendaCalendar,
   EVENTO_CORES,
@@ -107,6 +108,8 @@ export default function AgendaPage() {
           Agendar serviço
         </Button>
       </Group>
+
+      <MetasProgresso />
 
       <Group gap="lg">
         <Legenda cor={EVENTO_CORES.agendado} texto="Serviço agendado" />
