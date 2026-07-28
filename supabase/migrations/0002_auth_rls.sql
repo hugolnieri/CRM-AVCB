@@ -45,6 +45,11 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Funcao de trigger nao deve ser chamavel via /rest/v1/rpc/handle_new_user.
+-- O trigger continua funcionando: ele roda como dono de auth.users, nao pelo
+-- papel de quem fez a requisicao.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Leitura do perfil dentro das policies
 -- ---------------------------------------------------------------------------

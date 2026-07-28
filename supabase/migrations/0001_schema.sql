@@ -234,8 +234,14 @@ create index activities_cliente_idx on public.activities (cliente_id) where clie
 -- updated_at
 -- ---------------------------------------------------------------------------
 
+-- `set search_path` em toda funcao, inclusive de trigger: sem ele o linter do
+-- Supabase acusa "Function Search Path Mutable", e um schema hostil no
+-- search_path do chamador poderia sequestrar o que a funcao resolve.
 create or replace function public.set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+set search_path = public
+as $$
 begin
   new.updated_at = now();
   return new;
