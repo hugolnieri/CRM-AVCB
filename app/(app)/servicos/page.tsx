@@ -1,57 +1,57 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { IconPlus } from "@tabler/icons-react";
+import { Group, Loader, Select, Stack, Text, Title } from "@mantine/core";
 import { useClientes } from "@/hooks/useClientes";
-import {
-  useCreateServico,
-  useDeleteServico,
-  useServicos,
-  useUpdateServico,
-} from "@/hooks/useServicos";
+import { useServicos, useTiposServico } from "@/hooks/useServicos";
 import { useTeamMembers } from "@/hooks/useCurrentMember";
-import { ServicosTable } from "@/components/servicos/ServicosTable";
-import { ServicoForm } from "@/components/servicos/ServicoForm";
+import { ServicosPanel } from "@/components/servicos/ServicosPanel";
 import { SearchInput } from "@/components/shared/SearchInput";
-import { AdminDeleteButton } from "@/components/shared/AdminDeleteButton";
 import { matchesQuery } from "@/lib/search";
+import { VENCIMENTO_BUCKETS, vencimentoBucket } from "@/lib/vencimentos";
 import { nomeCliente } from "@/types/cliente";
-import type { Servico } from "@/types/servico";
+import { CATEGORIA_LABELS, SERVICO_STATUS_LABELS } from "@/types/servico";
 
+/**
+ * Lista completa de serviços. Fora do menu principal de propósito — o caminho
+ * normal é pelo cliente ou pela Agenda; esta tela existe para quando se quer
+ * varrer tudo (ex.: "o que vence este mês em toda a carteira").
+ */
 export default function ServicosPage() {
   const { data: servicos, isLoading, error } = useServicos();
   const { data: clientes } = useClientes();
   const { data: membros } = useTeamMembers();
+  const { data: tipos } = useTiposServico();
   const [search, setSearch] = useState("");
-  const [novoOpened, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
-  const [emEdicao, setEmEdicao] = useState<Servico | null>(null);
-  const create = useCreateServico();
-  const update = useUpdateServico();
-  const remove = useDeleteServico();
-
-  const tiposConhecidos = useMemo(
-    () => Array.from(new Set((servicos ?? []).map((s) => s.tipo))).sort(),
-    [servicos],
-  );
+  const [status, setStatus] = useState<string | null>(null);
+  const [categoria, setCategoria] = useState<string | null>(null);
+  const [bucket, setBucket] = useState<string | null>(null);
 
   const filtrados = useMemo(() => {
     if (!servicos) return [];
     const nomePorId = new Map((clientes ?? []).map((c) => [c.id, nomeCliente(c)]));
-    return servicos.filter((s) =>
-      matchesQuery([s.tipo, nomePorId.get(s.clienteId), s.observacoes], search),
-    );
-  }, [servicos, clientes, search]);
+    const categoriaPorTipo = new Map((tipos ?? []).map((t) => [t.id, t.categoria]));
+
+    return servicos.filter((s) => {
+      if (status && s.status !== status) return false;
+      if (categoria) {
+        const cat = s.tipoServicoId ? categoriaPorTipo.get(s.tipoServicoId) : undefined;
+        if (cat !== categoria) return false;
+      }
+      if (bucket) {
+        if (!s.dataVencimento) return false;
+        if (vencimentoBucket(s.dataVencimento) !== bucket) return false;
+      }
+      return matchesQuery(
+        [s.tipoNome, nomePorId.get(s.clienteId), s.instrutor, s.observacoes],
+        search,
+      );
+    });
+  }, [servicos, clientes, tipos, search, status, categoria, bucket]);
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Serviços</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={abrirNovo}>
-          Novo serviço
-        </Button>
-      </Group>
+      <Title order={2}>Serviços e treinamentos</Title>
 
       {isLoading && <Loader />}
       {error && <Text c="red">Erro ao carregar serviços.</Text>}
@@ -61,61 +61,49 @@ export default function ServicosPage() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Buscar por serviço, cliente, observação..."
+            placeholder="Buscar por serviço, cliente, instrutor..."
           />
-          <ServicosTable
+          <Group align="flex-end" wrap="wrap">
+            <Select
+              label="Situação"
+              placeholder="Todas"
+              clearable
+              data={Object.entries(SERVICO_STATUS_LABELS).map(([value, meta]) => ({
+                value,
+                label: meta.label,
+              }))}
+              value={status}
+              onChange={setStatus}
+              style={{ flex: "1 1 160px" }}
+            />
+            <Select
+              label="Natureza"
+              placeholder="Todas"
+              clearable
+              data={Object.entries(CATEGORIA_LABELS).map(([value, label]) => ({ value, label }))}
+              value={categoria}
+              onChange={setCategoria}
+              style={{ flex: "1 1 160px" }}
+            />
+            <Select
+              label="Vencimento"
+              placeholder="Todos"
+              clearable
+              data={VENCIMENTO_BUCKETS.map((b) => ({ value: b.value, label: b.label }))}
+              value={bucket}
+              onChange={setBucket}
+              style={{ flex: "1 1 200px" }}
+            />
+          </Group>
+
+          <ServicosPanel
             servicos={filtrados}
             clientes={clientes ?? []}
             membros={membros ?? []}
-            onRowClick={setEmEdicao}
+            tipos={tipos ?? []}
           />
         </>
       )}
-
-      <Modal opened={novoOpened} onClose={fecharNovo} title={<Title order={3}>Novo serviço</Title>} size="lg">
-        <ServicoForm
-          clientes={clientes ?? []}
-          membros={membros ?? []}
-          tiposConhecidos={tiposConhecidos}
-          submitting={create.isPending}
-          submitLabel="Registrar"
-          onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
-        />
-      </Modal>
-
-      <Modal
-        opened={emEdicao !== null}
-        onClose={() => setEmEdicao(null)}
-        title={<Title order={3}>Editar serviço</Title>}
-        size="lg"
-      >
-        {emEdicao && (
-          <>
-            <ServicoForm
-              key={emEdicao.id}
-              servico={emEdicao}
-              clientes={clientes ?? []}
-              membros={membros ?? []}
-              tiposConhecidos={tiposConhecidos}
-              submitting={update.isPending}
-              submitLabel="Salvar alterações"
-              onSubmit={(patch) =>
-                update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
-              }
-            />
-            <Group mt="md">
-              <AdminDeleteButton
-                loading={remove.isPending}
-                label="Excluir serviço"
-                confirmText="O registro sai do histórico do cliente. Não pode ser desfeito."
-                onConfirm={() =>
-                  remove.mutate(emEdicao.id, { onSuccess: () => setEmEdicao(null) })
-                }
-              />
-            </Group>
-          </>
-        )}
-      </Modal>
     </Stack>
   );
 }

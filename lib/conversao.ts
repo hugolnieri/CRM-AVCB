@@ -25,6 +25,9 @@ export function leadToClienteDraft(lead: Lead): Partial<ClienteInput> & { razaoS
     cep: null,
     status: "ativo",
     observacoes: lead.interesse ? `Interesse original: ${lead.interesse}` : null,
+    // Os serviços mapeados durante a prospecção seguem para o cliente: é
+    // justamente a lista do que ainda dá para vender depois de fechar.
+    possiveisServicos: lead.possiveisServicos,
     leadId: lead.id,
     responsavelId: lead.assignedUserId,
   };

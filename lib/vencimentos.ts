@@ -1,19 +1,17 @@
 import dayjs, { type Dayjs } from "dayjs";
 import { nomeCliente, type Cliente } from "@/types/cliente";
 import type { Servico } from "@/types/servico";
-import type { Treinamento } from "@/types/treinamento";
 
 export type VencimentoBucket = "vencido" | "esta_semana" | "este_mes" | "futuro";
 
 export type SituacaoCliente = "em_dia" | "a_vencer" | "vencido" | "sem_registros";
 
-/** Um treinamento ou serviço com data de vencimento, achatado para exibição. */
+/** Um serviço realizado que vence, achatado para exibição. */
 export interface ItemVencivel {
   id: string;
-  origem: "treinamento" | "servico";
   clienteId: string;
   clienteNome: string;
-  /** Nome do treinamento ou tipo do serviço. */
+  /** Nome do tipo de serviço. */
   descricao: string;
   /** "YYYY-MM-DD". */
   dataVencimento: string;
@@ -27,15 +25,15 @@ export interface ItemVencivel {
  *  - futuro: além disso
  *
  * A checagem de "hoje" vem antes da de "vencido" de propósito, pelo mesmo motivo
- * de followUpBucket em lib/followup.ts: um treinamento que vence hoje ainda vale
+ * de followUpBucket em lib/followup.ts: um serviço que vence hoje ainda vale
  * hoje, e não deve piscar como vencido o dia inteiro.
  *
  * As janelas são MÓVEIS (+7 e +30 dias), não de calendário. Usar
  * dayjs().endOf("week") pareceria mais fiel a "vence esta semana", mas
  * `dayjs.locale("pt-br")` nunca é chamado globalmente (o DatesProvider em
  * app/providers.tsx configura só os componentes do Mantine), então endOf("week")
- * usaria o locale `en` em silêncio. Janela móvel é livre de locale, determinística
- * e testável.
+ * usaria o locale `en` em silêncio. Janela móvel é livre de locale,
+ * determinística e testável.
  */
 export function vencimentoBucket(dataVencimento: string, now: Dayjs = dayjs()): VencimentoBucket {
   const when = dayjs(dataVencimento);
@@ -54,42 +52,24 @@ export const VENCIMENTO_BUCKETS: { value: VencimentoBucket; label: string; color
 ];
 
 /**
- * Achata treinamentos e serviços num único fluxo de itens que vencem, ordenado do
- * mais urgente ao mais distante. Registros sem data de vencimento ficam de fora:
- * não vencem, então não pertencem a este controle.
+ * Serviços que vencem, ordenados do mais urgente ao mais distante.
+ *
+ * Só entra o que foi `realizado` e tem data de vencimento: um serviço agendado
+ * ainda não gerou validade, e um cancelado não conta.
  */
-export function itensVenciveis(
-  treinamentos: Treinamento[],
-  servicos: Servico[],
-  clientes: Cliente[],
-): ItemVencivel[] {
+export function itensVenciveis(servicos: Servico[], clientes: Cliente[]): ItemVencivel[] {
   const nomePorId = new Map(clientes.map((c) => [c.id, nomeCliente(c)]));
 
-  const deTreinamentos: ItemVencivel[] = treinamentos
-    .filter((t) => t.dataVencimento !== null)
-    .map((t) => ({
-      id: t.id,
-      origem: "treinamento",
-      clienteId: t.clienteId,
-      clienteNome: nomePorId.get(t.clienteId) ?? "Cliente removido",
-      descricao: t.tipoNome,
-      dataVencimento: t.dataVencimento as string,
-    }));
-
-  const deServicos: ItemVencivel[] = servicos
-    .filter((s) => s.dataProxima !== null)
+  return servicos
+    .filter((s) => s.status === "realizado" && s.dataVencimento !== null)
     .map((s) => ({
       id: s.id,
-      origem: "servico",
       clienteId: s.clienteId,
       clienteNome: nomePorId.get(s.clienteId) ?? "Cliente removido",
-      descricao: s.tipo,
-      dataVencimento: s.dataProxima as string,
-    }));
-
-  return [...deTreinamentos, ...deServicos].sort((a, b) =>
-    a.dataVencimento.localeCompare(b.dataVencimento),
-  );
+      descricao: s.tipoNome,
+      dataVencimento: s.dataVencimento as string,
+    }))
+    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento));
 }
 
 export function agruparPorBucket(
@@ -110,7 +90,7 @@ export function agruparPorBucket(
 
 /**
  * Situação de conformidade de um cliente, derivada e nunca armazenada: uma coluna
- * no banco ficaria desatualizada no dia em que um treinamento vencesse sem que
+ * no banco ficaria desatualizada no dia em que um serviço vencesse sem que
  * ninguém abrisse o registro.
  */
 export function situacaoCliente(
@@ -133,3 +113,54 @@ export const SITUACAO_LABELS: Record<SituacaoCliente, { label: string; color: st
   vencido: { label: "Vencido", color: "red" },
   sem_registros: { label: "Sem registros", color: "gray" },
 };
+
+/** Colunas do kanban de conformidade no Painel. "sem_registros" fica de fora. */
+export const SITUACOES_KANBAN: SituacaoCliente[] = ["vencido", "a_vencer", "em_dia"];
+
+export interface ClienteComSituacao {
+  cliente: Cliente;
+  situacao: SituacaoCliente;
+  /** Vencimento mais urgente do cliente, para ordenar dentro da coluna. */
+  proximoVencimento: string | null;
+}
+
+/**
+ * Agrupa clientes ativos por situação, para o kanban do Painel. Dentro de cada
+ * coluna, o mais urgente primeiro — quem está prestes a vencer precisa aparecer
+ * no topo, não em ordem alfabética.
+ */
+export function clientesPorSituacao(
+  clientes: Cliente[],
+  itens: ItemVencivel[],
+  now: Dayjs = dayjs(),
+): Record<SituacaoCliente, ClienteComSituacao[]> {
+  const grupos: Record<SituacaoCliente, ClienteComSituacao[]> = {
+    vencido: [],
+    a_vencer: [],
+    em_dia: [],
+    sem_registros: [],
+  };
+
+  for (const cliente of clientes) {
+    if (cliente.status !== "ativo") continue;
+    const doCliente = itens
+      .filter((i) => i.clienteId === cliente.id)
+      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento));
+
+    grupos[situacaoCliente(cliente.id, itens, now)].push({
+      cliente,
+      situacao: situacaoCliente(cliente.id, itens, now),
+      proximoVencimento: doCliente[0]?.dataVencimento ?? null,
+    });
+  }
+
+  for (const lista of Object.values(grupos)) {
+    lista.sort((a, b) => {
+      if (a.proximoVencimento === null) return 1;
+      if (b.proximoVencimento === null) return -1;
+      return a.proximoVencimento.localeCompare(b.proximoVencimento);
+    });
+  }
+
+  return grupos;
+}

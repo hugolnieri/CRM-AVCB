@@ -1,13 +1,11 @@
 import type { Cliente } from "@/types/cliente";
 import type { Lead } from "@/types/lead";
-import type { Servico } from "@/types/servico";
-import type { TipoTreinamento, Treinamento } from "@/types/treinamento";
+import type { Servico, TipoServico } from "@/types/servico";
 
 /**
  * Fixtures compartilhadas pelos testes de lógica pura. Ficam num módulo só
- * porque `Lead` (e as entidades que virão) tem campos demais para cada arquivo
- * de teste redeclarar — e porque assim adicionar um campo ao domínio quebra um
- * lugar, não seis.
+ * porque as entidades têm campos demais para cada arquivo de teste redeclarar —
+ * e porque assim adicionar um campo ao domínio quebra um lugar, não seis.
  *
  * Não é um arquivo de teste: o padrão de include do Vitest é *.test.ts.
  */
@@ -25,6 +23,7 @@ export function makeLead(overrides: Partial<Lead> = {}): Lead {
     uf: "SP",
     origem: "indicacao",
     interesse: "NR-35 e NR-33",
+    possiveisServicos: null,
     valorEstimado: null,
     pipelineStage: "novo_lead",
     followUpAt: null,
@@ -54,6 +53,7 @@ export function makeCliente(overrides: Partial<Cliente> = {}): Cliente {
     cep: "18520-000",
     status: "ativo",
     observacoes: null,
+    possiveisServicos: null,
     leadId: null,
     responsavelId: null,
     createdAt: "2026-01-01T00:00:00Z",
@@ -62,11 +62,12 @@ export function makeCliente(overrides: Partial<Cliente> = {}): Cliente {
   };
 }
 
-export function makeTipoTreinamento(overrides: Partial<TipoTreinamento> = {}): TipoTreinamento {
+export function makeTipoServico(overrides: Partial<TipoServico> = {}): TipoServico {
   return {
     id: "tipo-1",
     nome: "Trabalho em Altura",
     sigla: "NR-35",
+    categoria: "treinamento",
     validadeMeses: 24,
     cargaHoraria: 8,
     ativo: true,
@@ -76,30 +77,19 @@ export function makeTipoTreinamento(overrides: Partial<TipoTreinamento> = {}): T
   };
 }
 
-export function makeTreinamento(overrides: Partial<Treinamento> = {}): Treinamento {
-  return {
-    id: "treinamento-1",
-    clienteId: "cliente-1",
-    tipoTreinamentoId: "tipo-1",
-    tipoNome: "Trabalho em Altura",
-    dataRealizacao: "2026-01-15",
-    dataVencimento: "2028-01-15",
-    participantes: 12,
-    instrutor: null,
-    observacoes: null,
-    createdAt: "2026-01-15T00:00:00Z",
-    updatedAt: "2026-01-15T00:00:00Z",
-    ...overrides,
-  };
-}
-
+/** Por padrão um serviço já realizado, que é o caso mais comum nos testes. */
 export function makeServico(overrides: Partial<Servico> = {}): Servico {
   return {
     id: "servico-1",
     clienteId: "cliente-1",
-    tipo: "Manutenção de extintores",
-    data: "2026-01-15",
-    dataProxima: "2027-01-15",
+    tipoServicoId: "tipo-1",
+    tipoNome: "Trabalho em Altura",
+    status: "realizado",
+    dataAgendada: null,
+    dataRealizacao: "2026-01-15",
+    dataVencimento: "2028-01-15",
+    participantes: 12,
+    instrutor: null,
     responsavelId: null,
     observacoes: null,
     createdAt: "2026-01-15T00:00:00Z",

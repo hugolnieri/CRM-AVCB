@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import type { TipoTreinamento } from "@/types/treinamento";
 
 /**
  * Data de vencimento sugerida: realização + validade do tipo.
@@ -18,9 +17,4 @@ export function sugerirVencimento(
 ): string | null {
   if (!validadeMeses || !dataRealizacao) return null;
   return dayjs(dataRealizacao).add(validadeMeses, "month").format("YYYY-MM-DD");
-}
-
-/** Rótulo do catálogo: "NR-35 — Trabalho em Altura". */
-export function rotuloTipo(tipo: TipoTreinamento): string {
-  return tipo.sigla ? `${tipo.sigla} — ${tipo.nome}` : tipo.nome;
 }

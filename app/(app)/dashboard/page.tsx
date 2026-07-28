@@ -2,48 +2,56 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useLeads } from "@/hooks/useLeads";
 import { useClientes } from "@/hooks/useClientes";
-import { useTiposTreinamento, useTreinamentos } from "@/hooks/useTreinamentos";
-import { useServicos } from "@/hooks/useServicos";
+import { useServicos, useTiposServico } from "@/hooks/useServicos";
 import { StatCard } from "@/components/shared/StatCard";
 import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
 import { FollowUpList } from "@/components/leads/FollowUpList";
+import { VencimentosKanban } from "@/components/painel/VencimentosKanban";
+import { JornadaControl } from "@/components/jornada/JornadaControl";
 import { PENDENCIA_LABELS, computePainel } from "@/lib/painel";
+import { clientesPorSituacao, itensVenciveis } from "@/lib/vencimentos";
 import type { Lead } from "@/types/lead";
 
 export default function PainelPage() {
   const router = useRouter();
   const { data: leads, isLoading } = useLeads();
   const { data: clientes } = useClientes();
-  const { data: treinamentos } = useTreinamentos();
   const { data: servicos } = useServicos();
-  const { data: tipos } = useTiposTreinamento();
+  const { data: tipos } = useTiposServico();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const painel = useMemo(
     () =>
       computePainel({
         clientes: clientes ?? [],
-        treinamentos: treinamentos ?? [],
         servicos: servicos ?? [],
         tipos: tipos ?? [],
         leads: leads ?? [],
       }),
-    [clientes, treinamentos, servicos, tipos, leads],
+    [clientes, servicos, tipos, leads],
+  );
+
+  const grupos = useMemo(
+    () => clientesPorSituacao(clientes ?? [], itensVenciveis(servicos ?? [], clientes ?? [])),
+    [clientes, servicos],
   );
 
   if (isLoading) return <Loader />;
 
   return (
     <Stack>
-      <Title order={2}>Painel</Title>
+      <Group justify="space-between" align="center">
+        <Title order={2}>Painel</Title>
+        <JornadaControl />
+      </Group>
 
       <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
         <StatCard label="Clientes ativos" value={painel.clientesAtivos} />
-        <StatCard label="Treinamentos realizados" value={painel.treinamentosRealizados} />
         <StatCard label="Serviços realizados" value={painel.servicosRealizados} />
+        <StatCard label="Agendados" value={painel.servicosAgendados} color="blue" />
         <StatCard
           label="Próximos vencimentos"
           value={painel.proximosVencimentos}
@@ -53,10 +61,17 @@ export default function PainelPage() {
         <StatCard label="Já venceram" value={painel.vencidos} color="red" />
       </SimpleGrid>
 
+      <Group mt="md" justify="space-between">
+        <Title order={3}>Conformidade da carteira</Title>
+        <Anchor size="sm" onClick={() => router.push("/servicos")}>
+          Ver todos os serviços
+        </Anchor>
+      </Group>
+      <VencimentosKanban grupos={grupos} />
+
       <Group mt="md">
         <Title order={3}>Retornos</Title>
       </Group>
-
       <FollowUpList
         leads={leads ?? []}
         onLeadClick={setSelectedLead}

@@ -3,6 +3,7 @@
 import {
   Button,
   Group,
+  MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
@@ -14,6 +15,8 @@ import { useForm } from "@mantine/form";
 import { LEAD_ORIGENS } from "@/lib/pipeline/origens";
 import { normalizePhoneToE164 } from "@/lib/phone";
 import type { Lead, LeadInput } from "@/types/lead";
+import type { TipoServico } from "@/types/servico";
+import type { TeamMember } from "@/types/team";
 
 /** Texto vazio vira null: "" numa coluna anulável só polui os dados. */
 function nullIfBlank(value: string): string | null {
@@ -24,12 +27,21 @@ function nullIfBlank(value: string): string | null {
 interface Props {
   /** Ausente = criação. */
   lead?: Lead;
+  tipos: TipoServico[];
+  membros: TeamMember[];
   onSubmit: (input: Partial<LeadInput> & { name: string }) => void;
   submitting?: boolean;
   submitLabel?: string;
 }
 
-export function LeadForm({ lead, onSubmit, submitting, submitLabel = "Salvar" }: Props) {
+export function LeadForm({
+  lead,
+  tipos,
+  membros,
+  onSubmit,
+  submitting,
+  submitLabel = "Salvar",
+}: Props) {
   const form = useForm({
     initialValues: {
       name: lead?.name ?? "",
@@ -42,6 +54,8 @@ export function LeadForm({ lead, onSubmit, submitting, submitLabel = "Salvar" }:
       uf: lead?.uf ?? "",
       origem: lead?.origem ?? null,
       interesse: lead?.interesse ?? "",
+      possiveisServicos: lead?.possiveisServicos ?? [],
+      assignedUserId: lead?.assignedUserId ?? null,
       valorEstimado: lead?.valorEstimado ?? ("" as number | ""),
     },
     validate: {
@@ -66,6 +80,10 @@ export function LeadForm({ lead, onSubmit, submitting, submitLabel = "Salvar" }:
           uf: nullIfBlank(values.uf),
           origem: values.origem,
           interesse: nullIfBlank(values.interesse),
+          // Array vazio vira null: mantem a coluna limpa e o "nao informado"
+          // com um valor so, em vez de distinguir [] de null sem motivo.
+          possiveisServicos: values.possiveisServicos.length > 0 ? values.possiveisServicos : null,
+          assignedUserId: values.assignedUserId,
           valorEstimado: values.valorEstimado === "" ? null : Number(values.valorEstimado),
         }),
       )}
@@ -105,6 +123,25 @@ export function LeadForm({ lead, onSubmit, submitting, submitLabel = "Salvar" }:
           placeholder="Que treinamento ou serviço procura"
           minRows={2}
           {...form.getInputProps("interesse")}
+        />
+
+        <MultiSelect
+          label="Possíveis serviços"
+          placeholder="O que faz sentido oferecer"
+          description="Segue junto ao converter o lead em cliente"
+          searchable
+          clearable
+          data={tipos.filter((t) => t.ativo).map((t) => t.nome)}
+          {...form.getInputProps("possiveisServicos")}
+        />
+
+        <Select
+          label="Responsável"
+          placeholder="Quem cuida deste lead"
+          clearable
+          searchable
+          data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+          {...form.getInputProps("assignedUserId")}
         />
 
         <NumberInput

@@ -43,6 +43,24 @@ export async function fetchActivities(owner: ActivityOwner): Promise<Activity[]>
   return (data as ActivityRow[]).map(mapRowToActivity);
 }
 
+/**
+ * Todas as atividades recentes, de todos os donos — alimenta o relatório diário
+ * por colaborador no admin. Limitado no servidor porque, ao contrário das outras
+ * listas, esta cresce sem teto e ninguém precisa do histórico inteiro para ver o
+ * mês corrente.
+ */
+export async function fetchActivitiesRecentes(desde: string): Promise<Activity[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data as ActivityRow[]).map(mapRowToActivity);
+}
+
 export async function addActivity(
   owner: ActivityOwner,
   activityType: ActivityType,

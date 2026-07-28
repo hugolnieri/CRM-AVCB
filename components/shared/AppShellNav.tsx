@@ -20,9 +20,6 @@ import {
   IconUsers,
   IconReportAnalytics,
   IconCalendarClock,
-  IconAlertTriangle,
-  IconCertificate,
-  IconTool,
   IconSettings,
   IconLogout,
   IconSun,
@@ -34,28 +31,22 @@ import { createClient } from "@/lib/supabase/client";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
 
 /**
- * Os grupos existem porque a lista passou de 10 itens e virou uma parede.
- * `adminOnly` esconde o item; a barreira real é a RLS (ver
- * supabase/migrations/0002_auth_rls.sql), não este campo.
+ * Serviços e vencimentos NAO estao aqui de proposito. Servico se cadastra pelo
+ * cliente ou pela Agenda, e vencimento aparece no Painel -- eram dois itens de
+ * menu para coisas que ninguem procura pelo menu.
+ *
+ * `adminOnly` esconde o item; a barreira real e a RLS (ver
+ * supabase/migrations/0002_auth_rls.sql), nao este campo.
  */
 const NAV_GROUPS: {
   label: string;
   items: { href: string; label: string; icon: typeof IconList; adminOnly?: boolean }[];
 }[] = [
   {
-    label: "Operação",
+    label: "Operacao",
     items: [
       { href: "/dashboard", label: "Painel", icon: IconLayoutDashboard },
-      { href: "/vencimentos", label: "Vencimentos", icon: IconAlertTriangle },
       { href: "/agenda", label: "Agenda", icon: IconCalendarClock },
-    ],
-  },
-  {
-    label: "Cadastros",
-    items: [
-      { href: "/clientes", label: "Clientes", icon: IconUsers },
-      { href: "/treinamentos", label: "Treinamentos", icon: IconCertificate },
-      { href: "/servicos", label: "Serviços", icon: IconTool },
     ],
   },
   {
@@ -63,12 +54,13 @@ const NAV_GROUPS: {
     items: [
       { href: "/leads", label: "Leads", icon: IconList },
       { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
-      { href: "/relatorios", label: "Relatórios", icon: IconReportAnalytics },
+      { href: "/clientes", label: "Clientes", icon: IconUsers },
+      { href: "/relatorios", label: "Relatorios", icon: IconReportAnalytics },
     ],
   },
   {
     label: "",
-    items: [{ href: "/admin", label: "Administração", icon: IconSettings, adminOnly: true }],
+    items: [{ href: "/admin", label: "Administracao", icon: IconSettings, adminOnly: true }],
   },
 ];
 

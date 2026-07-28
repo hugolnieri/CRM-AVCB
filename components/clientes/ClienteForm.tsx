@@ -1,9 +1,20 @@
 "use client";
 
-import { Button, Group, SimpleGrid, Stack, Textarea, TextInput } from "@mantine/core";
+import {
+  Button,
+  Group,
+  MultiSelect,
+  Select,
+  SimpleGrid,
+  Stack,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { normalizePhoneToE164 } from "@/lib/phone";
 import type { Cliente, ClienteInput } from "@/types/cliente";
+import type { TipoServico } from "@/types/servico";
+import type { TeamMember } from "@/types/team";
 
 function nullIfBlank(value: string): string | null {
   const trimmed = value.trim();
@@ -14,12 +25,22 @@ interface Props {
   /** Cliente existente (edição) ou rascunho vindo de uma conversão de lead. */
   cliente?: Cliente;
   draft?: Partial<ClienteInput> & { razaoSocial: string };
+  tipos: TipoServico[];
+  membros: TeamMember[];
   onSubmit: (input: Partial<ClienteInput> & { razaoSocial: string }) => void;
   submitting?: boolean;
   submitLabel?: string;
 }
 
-export function ClienteForm({ cliente, draft, onSubmit, submitting, submitLabel = "Salvar" }: Props) {
+export function ClienteForm({
+  cliente,
+  draft,
+  tipos,
+  membros,
+  onSubmit,
+  submitting,
+  submitLabel = "Salvar",
+}: Props) {
   const base = cliente ?? draft;
 
   const form = useForm({
@@ -35,6 +56,8 @@ export function ClienteForm({ cliente, draft, onSubmit, submitting, submitLabel 
       cidade: base?.cidade ?? "",
       uf: base?.uf ?? "",
       cep: base?.cep ?? "",
+      responsavelId: base?.responsavelId ?? null,
+      possiveisServicos: base?.possiveisServicos ?? [],
       observacoes: base?.observacoes ?? "",
     },
     validate: {
@@ -60,9 +83,11 @@ export function ClienteForm({ cliente, draft, onSubmit, submitting, submitLabel 
           cidade: nullIfBlank(values.cidade),
           uf: nullIfBlank(values.uf),
           cep: nullIfBlank(values.cep),
+          responsavelId: values.responsavelId,
+          // Array vazio vira null: mantém a coluna limpa e o "não informado"
+          // com um valor só, em vez de distinguir [] de null sem motivo.
+          possiveisServicos: values.possiveisServicos.length > 0 ? values.possiveisServicos : null,
           observacoes: nullIfBlank(values.observacoes),
-          // Preservado só na conversão; na edição `draft` é undefined e a chave
-          // nem entra no patch, então o vínculo existente não é tocado.
           ...(draft?.leadId ? { leadId: draft.leadId } : {}),
         }),
       )}
@@ -86,6 +111,25 @@ export function ClienteForm({ cliente, draft, onSubmit, submitting, submitLabel 
           <TextInput label="UF" maxLength={2} {...form.getInputProps("uf")} />
           <TextInput label="CEP" {...form.getInputProps("cep")} />
         </SimpleGrid>
+
+        <Select
+          label="Responsável"
+          placeholder="Quem cuida desta conta"
+          clearable
+          searchable
+          data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+          {...form.getInputProps("responsavelId")}
+        />
+
+        <MultiSelect
+          label="Possíveis serviços"
+          placeholder="O que ainda dá para oferecer"
+          description="Não é o que já foi contratado — é a lista do que faz sentido vender"
+          searchable
+          clearable
+          data={tipos.filter((t) => t.ativo).map((t) => t.nome)}
+          {...form.getInputProps("possiveisServicos")}
+        />
 
         <Textarea label="Observações" minRows={3} {...form.getInputProps("observacoes")} />
 

@@ -1,6 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addActivity, fetchActivities } from "@/lib/supabase/queries/activities";
+import dayjs from "dayjs";
+import {
+  addActivity,
+  fetchActivities,
+  fetchActivitiesRecentes,
+} from "@/lib/supabase/queries/activities";
 import { ownerKey, type ActivityOwner, type ActivityType } from "@/types/activity";
+
+/** Atividades dos últimos N dias, para o relatório diário do admin. */
+export function useActivitiesRecentes(dias = 30) {
+  const desde = dayjs().subtract(dias, "day").startOf("day").toISOString();
+  return useQuery({
+    queryKey: ["activitiesRecentes", dias],
+    queryFn: () => fetchActivitiesRecentes(desde),
+  });
+}
 
 /** ["activities", "lead", id] ou ["activities", "cliente", id]. */
 export function activitiesQueryKey(owner: ActivityOwner) {

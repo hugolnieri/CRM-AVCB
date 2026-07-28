@@ -6,8 +6,8 @@ import { Button, Group, Loader, Modal, Stack, Switch, Text, Title } from "@manti
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import { useClientes, useCreateCliente } from "@/hooks/useClientes";
-import { useTreinamentos } from "@/hooks/useTreinamentos";
-import { useServicos } from "@/hooks/useServicos";
+import { useServicos, useTiposServico } from "@/hooks/useServicos";
+import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { ClientesTable } from "@/components/clientes/ClientesTable";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -17,16 +17,17 @@ import { matchesQuery } from "@/lib/search";
 export default function ClientesPage() {
   const router = useRouter();
   const { data: clientes, isLoading, error } = useClientes();
-  const { data: treinamentos } = useTreinamentos();
   const { data: servicos } = useServicos();
+  const { data: tipos } = useTiposServico();
+  const { data: membros } = useTeamMembers();
   const [search, setSearch] = useState("");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [newOpened, { open: openNew, close: closeNew }] = useDisclosure(false);
   const createCliente = useCreateCliente();
 
   const itens = useMemo(
-    () => itensVenciveis(treinamentos ?? [], servicos ?? [], clientes ?? []),
-    [treinamentos, servicos, clientes],
+    () => itensVenciveis(servicos ?? [], clientes ?? []),
+    [servicos, clientes],
   );
 
   const filtrados = useMemo(() => {
@@ -79,6 +80,8 @@ export default function ClientesPage() {
         size="lg"
       >
         <ClienteForm
+          tipos={tipos ?? []}
+          membros={membros ?? []}
           submitting={createCliente.isPending}
           submitLabel="Cadastrar"
           onSubmit={(input) =>

@@ -27,6 +27,12 @@ export interface Lead {
   origem: string | null;
   /** Que treinamento ou serviço a empresa procura, em texto livre. */
   interesse: string | null;
+  /**
+   * Serviços do catálogo que fazem sentido oferecer a este lead. Guarda os
+   * nomes, não FKs: é intenção comercial, não vínculo referencial — e o nome
+   * continua legível se o tipo for renomeado ou desativado depois.
+   */
+  possiveisServicos: string[] | null;
   valorEstimado: number | null;
   pipelineStage: PipelineStage;
   /** Data/hora do próximo retorno agendado (ISO). Null = sem follow-up pendente. */
@@ -55,6 +61,7 @@ export type LeadInput = Pick<
   | "uf"
   | "origem"
   | "interesse"
+  | "possiveisServicos"
   | "valorEstimado"
   | "pipelineStage"
   | "followUpAt"

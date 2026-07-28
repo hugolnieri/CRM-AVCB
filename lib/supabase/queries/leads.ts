@@ -14,6 +14,7 @@ interface LeadRow {
   uf: string | null;
   origem: string | null;
   interesse: string | null;
+  possiveis_servicos: string[] | null;
   valor_estimado: number | null;
   pipeline_stage: PipelineStage;
   follow_up_at: string | null;
@@ -38,6 +39,7 @@ function mapRowToLead(row: LeadRow): Lead {
     uf: row.uf,
     origem: row.origem,
     interesse: row.interesse,
+    possiveisServicos: row.possiveis_servicos,
     valorEstimado: row.valor_estimado,
     pipelineStage: row.pipeline_stage,
     followUpAt: row.follow_up_at,
@@ -68,6 +70,7 @@ function mapPatchToRow(patch: Partial<LeadInput>): Record<string, unknown> {
   if ("uf" in patch) row.uf = patch.uf;
   if ("origem" in patch) row.origem = patch.origem;
   if ("interesse" in patch) row.interesse = patch.interesse;
+  if ("possiveisServicos" in patch) row.possiveis_servicos = patch.possiveisServicos;
   if ("valorEstimado" in patch) row.valor_estimado = patch.valorEstimado;
   if ("pipelineStage" in patch) row.pipeline_stage = patch.pipelineStage;
   if ("followUpAt" in patch) row.follow_up_at = patch.followUpAt;

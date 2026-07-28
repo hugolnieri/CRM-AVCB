@@ -1,15 +1,15 @@
 import dayjs, { type Dayjs } from "dayjs";
 import { nomeCliente, type Cliente } from "@/types/cliente";
 import type { Lead } from "@/types/lead";
-import type { Servico } from "@/types/servico";
-import type { TipoTreinamento, Treinamento } from "@/types/treinamento";
+import type { Servico, TipoServico } from "@/types/servico";
 import { agruparPorBucket, itensVenciveis, type ItemVencivel } from "@/lib/vencimentos";
 
 export type PendenciaTipo =
   | "vencido"
-  | "cliente_sem_treinamento"
+  | "cliente_sem_servico"
   | "vencimento_ausente"
-  | "conversao_pendente";
+  | "conversao_pendente"
+  | "agendado_atrasado";
 
 export interface Pendencia {
   id: string;
@@ -21,8 +21,8 @@ export interface Pendencia {
 
 export interface PainelResumo {
   clientesAtivos: number;
-  treinamentosRealizados: number;
   servicosRealizados: number;
+  servicosAgendados: number;
   /** Itens que vencem nos próximos 30 dias (não inclui os já vencidos). */
   proximosVencimentos: number;
   vencidos: number;
@@ -31,49 +31,72 @@ export interface PainelResumo {
 
 interface Entrada {
   clientes: Cliente[];
-  treinamentos: Treinamento[];
   servicos: Servico[];
-  tipos: TipoTreinamento[];
+  tipos: TipoServico[];
   leads: Lead[];
 }
 
 /**
- * O painel administrativo pedido nos requisitos: clientes cadastrados,
- * treinamentos e serviços realizados, próximos vencimentos e pendências.
+ * O painel administrativo pedido nos requisitos: clientes cadastrados, serviços
+ * realizados, próximos vencimentos e pendências.
  *
  * "Pendência" é vago no documento, então aqui ela é definida concretamente como
- * as quatro coisas que exigem alguém agir — e cada uma leva a uma tela.
+ * as cinco coisas que exigem alguém agir — e cada uma leva a uma tela.
  */
 export function computePainel(
-  { clientes, treinamentos, servicos, tipos, leads }: Entrada,
+  { clientes, servicos, tipos, leads }: Entrada,
   now: Dayjs = dayjs(),
 ): PainelResumo {
   const ativos = clientes.filter((c) => c.status === "ativo");
-  const itens = itensVenciveis(treinamentos, servicos, clientes);
+  const itens = itensVenciveis(servicos, clientes);
   const grupos = agruparPorBucket(itens, now);
+  const realizados = servicos.filter((s) => s.status === "realizado");
+  const agendados = servicos.filter((s) => s.status === "agendado");
 
   return {
     clientesAtivos: ativos.length,
-    treinamentosRealizados: treinamentos.length,
-    servicosRealizados: servicos.length,
+    servicosRealizados: realizados.length,
+    servicosAgendados: agendados.length,
     proximosVencimentos: grupos.esta_semana.length + grupos.este_mes.length,
     vencidos: grupos.vencido.length,
     pendencias: [
       ...pendenciasVencidas(grupos.vencido),
+      ...pendenciasAgendadoAtrasado(agendados, clientes, now),
       ...pendenciasConversao(leads, clientes),
-      ...pendenciasClienteSemTreinamento(ativos, treinamentos),
-      ...pendenciasVencimentoAusente(treinamentos, tipos),
+      ...pendenciasClienteSemServico(ativos, realizados),
+      ...pendenciasVencimentoAusente(realizados, tipos),
     ],
   };
 }
 
 function pendenciasVencidas(vencidos: ItemVencivel[]): Pendencia[] {
   return vencidos.map((item) => ({
-    id: `vencido-${item.origem}-${item.id}`,
+    id: `vencido-${item.id}`,
     tipo: "vencido",
     descricao: `${item.clienteNome}: ${item.descricao} venceu em ${dayjs(item.dataVencimento).format("DD/MM/YYYY")}`,
     href: `/clientes/${item.clienteId}`,
   }));
+}
+
+/**
+ * Compromisso cuja data já passou e ninguém marcou como realizado. Sem isto o
+ * agendamento vira um buraco silencioso: o serviço some da agenda e nunca gera
+ * vencimento.
+ */
+function pendenciasAgendadoAtrasado(
+  agendados: Servico[],
+  clientes: Cliente[],
+  now: Dayjs,
+): Pendencia[] {
+  const nomePorId = new Map(clientes.map((c) => [c.id, nomeCliente(c)]));
+  return agendados
+    .filter((s) => s.dataAgendada && dayjs(s.dataAgendada).isBefore(now, "day"))
+    .map((s) => ({
+      id: `agendado-${s.id}`,
+      tipo: "agendado_atrasado" as const,
+      descricao: `${nomePorId.get(s.clienteId) ?? "Cliente"}: ${s.tipoNome} estava agendado para ${dayjs(s.dataAgendada).format("DD/MM/YYYY")} e não foi concluído`,
+      href: `/clientes/${s.clienteId}`,
+    }));
 }
 
 /**
@@ -93,49 +116,44 @@ function pendenciasConversao(leads: Lead[], clientes: Cliente[]): Pendencia[] {
     }));
 }
 
-function pendenciasClienteSemTreinamento(
-  ativos: Cliente[],
-  treinamentos: Treinamento[],
-): Pendencia[] {
-  const comTreinamento = new Set(treinamentos.map((t) => t.clienteId));
+function pendenciasClienteSemServico(ativos: Cliente[], realizados: Servico[]): Pendencia[] {
+  const comServico = new Set(realizados.map((s) => s.clienteId));
   return ativos
-    .filter((c) => !comTreinamento.has(c.id))
+    .filter((c) => !comServico.has(c.id))
     .map((cliente) => ({
-      id: `sem-treinamento-${cliente.id}`,
-      tipo: "cliente_sem_treinamento" as const,
-      descricao: `${nomeCliente(cliente)} não tem nenhum treinamento registrado`,
+      id: `sem-servico-${cliente.id}`,
+      tipo: "cliente_sem_servico" as const,
+      descricao: `${nomeCliente(cliente)} não tem nenhum serviço registrado`,
       href: `/clientes/${cliente.id}`,
     }));
 }
 
 /**
- * Treinamento sem vencimento cujo tipo TEM validade definida: dado incompleto,
- * quase sempre alguém que limpou o campo sugerido sem querer. Treinamento de tipo
- * sem validade não é pendência — esse realmente não vence.
+ * Serviço realizado sem vencimento cujo tipo TEM validade definida: dado
+ * incompleto, quase sempre alguém que limpou o campo sugerido sem querer.
+ * Serviço de tipo sem validade não é pendência — esse realmente não vence.
  */
-function pendenciasVencimentoAusente(
-  treinamentos: Treinamento[],
-  tipos: TipoTreinamento[],
-): Pendencia[] {
+function pendenciasVencimentoAusente(realizados: Servico[], tipos: TipoServico[]): Pendencia[] {
   const validadePorTipo = new Map(tipos.map((t) => [t.id, t.validadeMeses]));
-  return treinamentos
+  return realizados
     .filter(
-      (t) =>
-        t.dataVencimento === null &&
-        t.tipoTreinamentoId !== null &&
-        (validadePorTipo.get(t.tipoTreinamentoId) ?? null) !== null,
+      (s) =>
+        s.dataVencimento === null &&
+        s.tipoServicoId !== null &&
+        (validadePorTipo.get(s.tipoServicoId) ?? null) !== null,
     )
-    .map((t) => ({
-      id: `sem-vencimento-${t.id}`,
+    .map((s) => ({
+      id: `sem-vencimento-${s.id}`,
       tipo: "vencimento_ausente" as const,
-      descricao: `Treinamento "${t.tipoNome}" de ${dayjs(t.dataRealizacao).format("DD/MM/YYYY")} está sem data de vencimento`,
-      href: `/clientes/${t.clienteId}`,
+      descricao: `"${s.tipoNome}" de ${dayjs(s.dataRealizacao).format("DD/MM/YYYY")} está sem data de vencimento`,
+      href: `/clientes/${s.clienteId}`,
     }));
 }
 
 export const PENDENCIA_LABELS: Record<PendenciaTipo, { label: string; color: string }> = {
   vencido: { label: "Vencido", color: "red" },
+  agendado_atrasado: { label: "Agendamento atrasado", color: "orange" },
   conversao_pendente: { label: "Conversão pendente", color: "blue" },
-  cliente_sem_treinamento: { label: "Sem treinamento", color: "orange" },
-  vencimento_ausente: { label: "Dado incompleto", color: "yellow" },
+  cliente_sem_servico: { label: "Sem serviço", color: "yellow" },
+  vencimento_ausente: { label: "Dado incompleto", color: "gray" },
 };

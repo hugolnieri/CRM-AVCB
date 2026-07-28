@@ -5,6 +5,8 @@ import { Button, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core"
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import { useCreateLead, useLeads } from "@/hooks/useLeads";
+import { useTiposServico } from "@/hooks/useServicos";
+import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { LeadsTable } from "@/components/leads/LeadsTable";
 import { LeadFilters, type LeadFiltersValue } from "@/components/leads/LeadFilters";
 import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
@@ -29,6 +31,8 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [newOpened, { open: openNew, close: closeNew }] = useDisclosure(false);
   const createLead = useCreateLead();
+  const { data: tipos } = useTiposServico();
+  const { data: membros } = useTeamMembers();
 
   const origemOptions = useMemo(() => (leads ? distinct(leads, (l) => l.origem) : []), [leads]);
   const cidadeOptions = useMemo(() => (leads ? distinct(leads, (l) => l.cidade) : []), [leads]);
@@ -81,6 +85,8 @@ export default function LeadsPage() {
 
       <Modal opened={newOpened} onClose={closeNew} title={<Title order={3}>Novo lead</Title>} size="lg">
         <LeadForm
+          tipos={tipos ?? []}
+          membros={membros ?? []}
           submitting={createLead.isPending}
           submitLabel="Criar lead"
           onSubmit={(input) => createLead.mutate(input, { onSuccess: closeNew })}

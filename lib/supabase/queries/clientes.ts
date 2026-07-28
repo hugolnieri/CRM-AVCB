@@ -17,6 +17,7 @@ interface ClienteRow {
   cep: string | null;
   status: ClienteStatus;
   observacoes: string | null;
+  possiveis_servicos: string[] | null;
   lead_id: string | null;
   responsavel_id: string | null;
   created_at: string;
@@ -40,6 +41,7 @@ function mapRowToCliente(row: ClienteRow): Cliente {
     cep: row.cep,
     status: row.status,
     observacoes: row.observacoes,
+    possiveisServicos: row.possiveis_servicos,
     leadId: row.lead_id,
     responsavelId: row.responsavel_id,
     createdAt: row.created_at,
@@ -63,6 +65,7 @@ function mapPatchToRow(patch: Partial<ClienteInput>): Record<string, unknown> {
   if ("cep" in patch) row.cep = patch.cep;
   if ("status" in patch) row.status = patch.status;
   if ("observacoes" in patch) row.observacoes = patch.observacoes;
+  if ("possiveisServicos" in patch) row.possiveis_servicos = patch.possiveisServicos;
   if ("leadId" in patch) row.lead_id = patch.leadId;
   if ("responsavelId" in patch) row.responsavel_id = patch.responsavelId;
   return row;

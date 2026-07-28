@@ -21,6 +21,11 @@ export interface Cliente {
   cep: string | null;
   status: ClienteStatus;
   observacoes: string | null;
+  /**
+   * Serviços do catálogo que fazem sentido oferecer a este cliente. Guarda os
+   * nomes, não FKs — mesma razão do campo homônimo em Lead.
+   */
+  possiveisServicos: string[] | null;
   leadId: string | null;
   responsavelId: string | null;
   createdAt: string;

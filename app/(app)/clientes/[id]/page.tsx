@@ -17,46 +17,25 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import {
   IconArrowLeft,
-  IconCertificate,
   IconNote,
   IconPencil,
-  IconPlus,
   IconTool,
   IconUser,
 } from "@tabler/icons-react";
 import { useClientes, useToggleClienteAtivo, useUpdateCliente } from "@/hooks/useClientes";
-import {
-  useCreateTreinamento,
-  useDeleteTreinamento,
-  useTiposTreinamento,
-  useTreinamentos,
-  useUpdateTreinamento,
-} from "@/hooks/useTreinamentos";
-import {
-  useCreateServico,
-  useDeleteServico,
-  useServicos,
-  useUpdateServico,
-} from "@/hooks/useServicos";
+import { useServicos, useTiposServico } from "@/hooks/useServicos";
 import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { useActivities } from "@/hooks/useActivities";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
-import { TreinamentosTable } from "@/components/treinamentos/TreinamentosTable";
-import { TreinamentoForm } from "@/components/treinamentos/TreinamentoForm";
-import { ServicosTable } from "@/components/servicos/ServicosTable";
-import { ServicoForm } from "@/components/servicos/ServicoForm";
+import { ServicosPanel } from "@/components/servicos/ServicosPanel";
 import { CopyableField } from "@/components/shared/CopyableField";
-import { AdminDeleteButton } from "@/components/shared/AdminDeleteButton";
 import { NoteComposer } from "@/components/leads/NoteComposer";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
 import { SITUACAO_LABELS, itensVenciveis, situacaoCliente } from "@/lib/vencimentos";
 import { nomeCliente } from "@/types/cliente";
-import type { Servico } from "@/types/servico";
-import type { Treinamento } from "@/types/treinamento";
 
 export default function ClienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -64,9 +43,8 @@ export default function ClienteDetalhePage() {
   const clienteId = params.id;
 
   const { data: clientes, isLoading } = useClientes();
-  const { data: treinamentos } = useTreinamentos();
   const { data: servicos } = useServicos();
-  const { data: tipos } = useTiposTreinamento();
+  const { data: tipos } = useTiposServico();
   const { data: membros } = useTeamMembers();
   const { data: activities, isLoading: loadingActivities } = useActivities({ clienteId });
 
@@ -75,19 +53,14 @@ export default function ClienteDetalhePage() {
   const toggleAtivo = useToggleClienteAtivo();
 
   const cliente = clientes?.find((c) => c.id === clienteId);
-
   const doCliente = useMemo(
-    () => ({
-      treinamentos: (treinamentos ?? []).filter((t) => t.clienteId === clienteId),
-      servicos: (servicos ?? []).filter((s) => s.clienteId === clienteId),
-    }),
-    [treinamentos, servicos, clienteId],
+    () => (servicos ?? []).filter((s) => s.clienteId === clienteId),
+    [servicos, clienteId],
   );
 
   const situacao = useMemo(() => {
     if (!cliente) return null;
-    const itens = itensVenciveis(doCliente.treinamentos, doCliente.servicos, [cliente]);
-    return situacaoCliente(clienteId, itens);
+    return situacaoCliente(clienteId, itensVenciveis(doCliente, [cliente]));
   }, [cliente, doCliente, clienteId]);
 
   if (isLoading) return <Loader />;
@@ -148,11 +121,8 @@ export default function ClienteDetalhePage() {
           <Tabs.Tab value="dados" leftSection={<IconUser size={14} />}>
             Dados
           </Tabs.Tab>
-          <Tabs.Tab value="treinamentos" leftSection={<IconCertificate size={14} />}>
-            Treinamentos ({doCliente.treinamentos.length})
-          </Tabs.Tab>
           <Tabs.Tab value="servicos" leftSection={<IconTool size={14} />}>
-            Serviços ({doCliente.servicos.length})
+            Serviços ({doCliente.length})
           </Tabs.Tab>
           <Tabs.Tab value="notas" leftSection={<IconNote size={14} />}>
             Notas
@@ -179,6 +149,21 @@ export default function ClienteDetalhePage() {
               </SimpleGrid>
             </Paper>
 
+            {cliente.possiveisServicos && cliente.possiveisServicos.length > 0 && (
+              <Paper withBorder p="md" radius="md">
+                <Text size="xs" c="dimmed" mb={8}>
+                  Possíveis serviços a oferecer
+                </Text>
+                <Group gap="xs">
+                  {cliente.possiveisServicos.map((s) => (
+                    <Badge key={s} variant="light" color="blue">
+                      {s}
+                    </Badge>
+                  ))}
+                </Group>
+              </Paper>
+            )}
+
             {cliente.observacoes && (
               <Paper withBorder p="md" radius="md">
                 <Text size="xs" c="dimmed" mb={4}>
@@ -203,22 +188,19 @@ export default function ClienteDetalhePage() {
               </Button>
             </Group>
             <Text size="xs" c="dimmed">
-              Clientes não são excluídos: inativar preserva todo o histórico de treinamentos e
-              serviços, que é o que comprova conformidade.
+              Clientes não são excluídos: inativar preserva todo o histórico de serviços, que é o
+              que comprova conformidade.
             </Text>
           </Stack>
         </Tabs.Panel>
 
-        <Tabs.Panel value="treinamentos" pt="md">
-          <TreinamentosTab clienteId={clienteId} treinamentos={doCliente.treinamentos} tipos={tipos ?? []} />
-        </Tabs.Panel>
-
         <Tabs.Panel value="servicos" pt="md">
-          <ServicosTab
-            clienteId={clienteId}
-            servicos={doCliente.servicos}
-            servicosTodos={servicos ?? []}
+          <ServicosPanel
+            servicos={doCliente}
+            clientes={[]}
             membros={membros ?? []}
+            tipos={tipos ?? []}
+            clienteFixo={clienteId}
           />
         </Tabs.Panel>
 
@@ -241,183 +223,14 @@ export default function ClienteDetalhePage() {
       >
         <ClienteForm
           cliente={cliente}
+          tipos={tipos ?? []}
+          membros={membros ?? []}
           submitting={updateCliente.isPending}
           submitLabel="Salvar alterações"
           onSubmit={(patch) =>
-            updateCliente.mutate(
-              { id: cliente.id, patch },
-              { onSuccess: () => setEditando(false) },
-            )
+            updateCliente.mutate({ id: cliente.id, patch }, { onSuccess: () => setEditando(false) })
           }
         />
-      </Modal>
-    </Stack>
-  );
-}
-
-function TreinamentosTab({
-  clienteId,
-  treinamentos,
-  tipos,
-}: {
-  clienteId: string;
-  treinamentos: Treinamento[];
-  tipos: Parameters<typeof TreinamentoForm>[0]["tipos"];
-}) {
-  const [novoOpened, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
-  const [emEdicao, setEmEdicao] = useState<Treinamento | null>(null);
-  const create = useCreateTreinamento();
-  const update = useUpdateTreinamento();
-  const remove = useDeleteTreinamento();
-
-  return (
-    <Stack>
-      <Group justify="flex-end">
-        <Button leftSection={<IconPlus size={16} />} onClick={abrirNovo}>
-          Novo treinamento
-        </Button>
-      </Group>
-
-      <TreinamentosTable
-        treinamentos={treinamentos}
-        clientes={[]}
-        hideCliente
-        onRowClick={setEmEdicao}
-      />
-
-      <Modal
-        opened={novoOpened}
-        onClose={fecharNovo}
-        title={<Title order={3}>Novo treinamento</Title>}
-        size="lg"
-      >
-        <TreinamentoForm
-          clientes={[]}
-          tipos={tipos}
-          clienteFixo={clienteId}
-          submitting={create.isPending}
-          submitLabel="Registrar"
-          onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
-        />
-      </Modal>
-
-      <Modal
-        opened={emEdicao !== null}
-        onClose={() => setEmEdicao(null)}
-        title={<Title order={3}>Editar treinamento</Title>}
-        size="lg"
-      >
-        {emEdicao && (
-          <>
-            <TreinamentoForm
-              key={emEdicao.id}
-              treinamento={emEdicao}
-              clientes={[]}
-              tipos={tipos}
-              clienteFixo={clienteId}
-              submitting={update.isPending}
-              submitLabel="Salvar alterações"
-              onSubmit={(patch) =>
-                update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
-              }
-            />
-            <Group mt="md">
-              <AdminDeleteButton
-                loading={remove.isPending}
-                label="Excluir treinamento"
-                confirmText="O registro sai do histórico e do controle de vencimentos. Não pode ser desfeito."
-                onConfirm={() => remove.mutate(emEdicao.id, { onSuccess: () => setEmEdicao(null) })}
-              />
-            </Group>
-          </>
-        )}
-      </Modal>
-    </Stack>
-  );
-}
-
-function ServicosTab({
-  clienteId,
-  servicos,
-  servicosTodos,
-  membros,
-}: {
-  clienteId: string;
-  servicos: Servico[];
-  servicosTodos: Servico[];
-  membros: Parameters<typeof ServicoForm>[0]["membros"];
-}) {
-  const [novoOpened, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
-  const [emEdicao, setEmEdicao] = useState<Servico | null>(null);
-  const create = useCreateServico();
-  const update = useUpdateServico();
-  const remove = useDeleteServico();
-
-  // Tipos já usados em qualquer cliente alimentam o Autocomplete.
-  const tiposConhecidos = useMemo(
-    () => Array.from(new Set(servicosTodos.map((s) => s.tipo))).sort(),
-    [servicosTodos],
-  );
-
-  return (
-    <Stack>
-      <Group justify="flex-end">
-        <Button leftSection={<IconPlus size={16} />} onClick={abrirNovo}>
-          Novo serviço
-        </Button>
-      </Group>
-
-      <ServicosTable
-        servicos={servicos}
-        clientes={[]}
-        membros={membros}
-        hideCliente
-        onRowClick={setEmEdicao}
-      />
-
-      <Modal opened={novoOpened} onClose={fecharNovo} title={<Title order={3}>Novo serviço</Title>} size="lg">
-        <ServicoForm
-          clientes={[]}
-          membros={membros}
-          tiposConhecidos={tiposConhecidos}
-          clienteFixo={clienteId}
-          submitting={create.isPending}
-          submitLabel="Registrar"
-          onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
-        />
-      </Modal>
-
-      <Modal
-        opened={emEdicao !== null}
-        onClose={() => setEmEdicao(null)}
-        title={<Title order={3}>Editar serviço</Title>}
-        size="lg"
-      >
-        {emEdicao && (
-          <>
-            <ServicoForm
-              key={emEdicao.id}
-              servico={emEdicao}
-              clientes={[]}
-              membros={membros}
-              tiposConhecidos={tiposConhecidos}
-              clienteFixo={clienteId}
-              submitting={update.isPending}
-              submitLabel="Salvar alterações"
-              onSubmit={(patch) =>
-                update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
-              }
-            />
-            <Group mt="md">
-              <AdminDeleteButton
-                loading={remove.isPending}
-                label="Excluir serviço"
-                confirmText="O registro sai do histórico do cliente. Não pode ser desfeito."
-                onConfirm={() => remove.mutate(emEdicao.id, { onSuccess: () => setEmEdicao(null) })}
-              />
-            </Group>
-          </>
-        )}
       </Modal>
     </Stack>
   );

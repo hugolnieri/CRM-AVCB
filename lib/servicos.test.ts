@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sugerirVencimento } from "./treinamentos";
+import { sugerirVencimento } from "./servicos";
 
 describe("sugerirVencimento", () => {
   it("adds the type's validity in months", () => {

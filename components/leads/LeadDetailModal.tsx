@@ -14,6 +14,8 @@ import { LeadForm } from "@/components/leads/LeadForm";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { useActivities } from "@/hooks/useActivities";
 import { useUpdateLeadInfo } from "@/hooks/useLeads";
+import { useTiposServico } from "@/hooks/useServicos";
+import { useTeamMembers } from "@/hooks/useCurrentMember";
 import type { Lead } from "@/types/lead";
 
 interface Props {
@@ -33,12 +35,16 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
   const [editing, setEditing] = useState(false);
   const { data: activities, isLoading: loadingActivities } = useActivities({ leadId: lead.id });
   const updateInfo = useUpdateLeadInfo();
+  const { data: tipos } = useTiposServico();
+  const { data: membros } = useTeamMembers();
 
   if (editing) {
     return (
       <Stack>
         <LeadForm
           lead={lead}
+          tipos={tipos ?? []}
+          membros={membros ?? []}
           submitting={updateInfo.isPending}
           submitLabel="Salvar alterações"
           onSubmit={(patch) =>
