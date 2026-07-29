@@ -25,6 +25,15 @@ import { Readable, Transform } from "node:stream";
 import zlib from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { CAMADAS, cidadesDasCamadas } from "./regiao.mjs";
+import {
+  apenasDigitos,
+  aspasFechadas,
+  colunas,
+  dataReceita,
+  limparRazaoSocial,
+  normalizar,
+  telefone,
+} from "./receita.mjs";
 
 const TOKEN = "gn672Ad4CF8N6TK";
 const BASE = `https://arquivos.receitafederal.gov.br/public.php/dav/files/${TOKEN}/Dados/Cadastros/CNPJ`;
@@ -70,25 +79,6 @@ function argumentos() {
   return o;
 }
 
-// Marcas de acento separadas pelo NFD. Escrito com `new RegExp` e escapes em vez
-// de literal: os proprios caracteres combinantes ja se corromperam neste arquivo
-// uma vez, e num literal a corrupcao passa despercebida.
-const MARCAS = new RegExp("[\u0300-\u036f]", "g");
-
-/** Sem acento, sem pontuacao, maiusculo: e assim que os dois lados se encontram. */
-function normalizar(texto) {
-  return (texto ?? "")
-    .normalize("NFD")
-    .replace(MARCAS, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, " ")
-    .trim();
-}
-
-function apenasDigitos(v) {
-  return (v ?? "").replace(/\D/g, "");
-}
-
 // --- leitura em fluxo --------------------------------------------------------
 
 /**
@@ -123,18 +113,6 @@ function tiraCabecalhoZip() {
       cb(null, restante.subarray(inicio));
     },
   });
-}
-
-/**
- * Um numero par de aspas significa que todos os campos citados fecharam.
- *
- * charCodeAt e nao texto[i]: indexar por colchete cria uma string de um
- * caractere a cada volta, e isto roda ~10 milhoes de vezes por parte.
- */
-function aspasFechadas(texto) {
-  let n = 0;
-  for (let i = 0; i < texto.length; i++) if (texto.charCodeAt(i) === 34) n++;
-  return (n & 1) === 0;
 }
 
 /** Um registro pode ocupar mais de uma linha; acima disso e lixo, nao campo. */
@@ -174,57 +152,6 @@ async function* registros(url) {
   if (acumulado) yield acumulado;
 }
 
-/**
- * `"a";"b";"c"` -> ["a","b","c"].
- *
- * NAO da para usar split(";"): os campos sao citados e alguns contem ponto e
- * virgula de verdade -- razao social e complemento de endereco, principalmente.
- * Um split ingenuo transforma essas linhas em 31 colunas e derruba a conferencia
- * de layout. Foi o primeiro erro que o arquivo real acusou.
- *
- * Mas o caminho cuidadoso e caractere a caractere, e sao ~10 milhoes de linhas
- * por parte: medido, ele sozinho custa mais que o download dos 2 GB. Entao o
- * caminho normal e um split pelo separador COMPLETO `";"`, que so casa entre
- * campos, e o cuidadoso fica de reserva para a linha rara que o split erra.
- */
-const SEPARADOR = '";"';
-
-function colunas(linha, esperado) {
-  if (linha.length > 1 && linha.charCodeAt(0) === 34) {
-    const partes = linha.slice(1, -1).split(SEPARADOR);
-    // Sem `esperado` nao da para saber se o rapido acertou, entao ele vale;
-    // com `esperado`, divergir manda para o cuidadoso.
-    if (esperado === undefined || partes.length === esperado) return partes;
-  }
-  return colunasCuidadoso(linha);
-}
-
-function colunasCuidadoso(linha) {
-  const saida = [];
-  let atual = "";
-  let dentroDeAspas = false;
-
-  for (let i = 0; i < linha.length; i++) {
-    const ch = linha[i];
-    if (ch === '"') {
-      // "" dentro de campo citado e uma aspa literal, nao o fim do campo.
-      if (dentroDeAspas && linha[i + 1] === '"') {
-        atual += '"';
-        i++;
-      } else {
-        dentroDeAspas = !dentroDeAspas;
-      }
-    } else if (ch === ";" && !dentroDeAspas) {
-      saida.push(atual.trim());
-      atual = "";
-    } else {
-      atual += ch;
-    }
-  }
-  saida.push(atual.trim());
-  return saida;
-}
-
 async function mesMaisRecente() {
   const r = await fetch(BASE, { method: "PROPFIND", headers: { ...CABECALHOS, Depth: "1" } });
   if (!r.ok) throw new Error(`${r.status} ao listar as competencias`);
@@ -252,19 +179,6 @@ async function mapaDeMunicipios(url, alvo) {
     if (oficial) porCodigo.set(codigo, oficial);
   }
   return porCodigo;
-}
-
-function telefone(ddd, numero) {
-  const d = apenasDigitos(ddd);
-  const n = apenasDigitos(numero);
-  return d && n ? `(${d}) ${n}` : null;
-}
-
-function dataReceita(v) {
-  // "AAAAMMDD" -> "AAAA-MM-DD". "0" e "00000000" aparecem e significam vazio.
-  const d = apenasDigitos(v);
-  if (d.length !== 8 || d.startsWith("0000")) return null;
-  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
 }
 
 function casaCnae(cnae, prefixos) {
@@ -354,7 +268,11 @@ async function completarComEmpresas(mes, partes, achados) {
       if (!alvos) continue;
 
       for (const r of alvos) {
-        r.razao_social = c[EMPRESA.RAZAO_SOCIAL];
+        // Tira o CPF do titular, que a Receita embute na razao social de MEI e
+        // empresario individual -- 56,5% das linhas do arquivo real. Dado de
+        // empresa e publico; CPF de pessoa fisica e outra coisa, e nao ajuda a
+        // vender nada. Mesmo motivo de Socios.zip nao ser baixado.
+        r.razao_social = limparRazaoSocial(c[EMPRESA.RAZAO_SOCIAL]);
         r.porte = c[EMPRESA.PORTE] || null;
         // "5000,00" -- virgula decimal, do jeito que a Receita escreve.
         r.capital_social = Number(String(c[EMPRESA.CAPITAL_SOCIAL]).replace(",", ".")) || null;
