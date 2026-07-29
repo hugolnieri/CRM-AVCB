@@ -19,21 +19,10 @@ depois de aplicar, atualizar à mão o `XRow` correspondente em
 | `0010_exclusoes.sql` | sim | `solicitacoes_exclusao`, `clientes_delete_admin` |
 | `0011_tarefas.sql` | sim | `tarefas` |
 | `0012_cidades.sql` | sim | cache de coordenadas para o mapa |
-| **`0013_cnae.sql`** | **NÃO** | CNAE em leads/clientes e prefixos em `tipos_servico` |
+| `0013_cnae.sql` | sim | CNAE em leads/clientes e prefixos em `tipos_servico` |
 
 Não há `0004`: o número foi consumido por uma migration de AVCB descartada no
 pivô, e renumerar o que já estava aplicado criaria divergência pior que o buraco.
-
-## Por que a 0013 está pendente
-
-O conector do Supabase caiu no meio da sessão e não voltou. Ela **não** foi
-aplicada pelo SQL Editor de propósito: aplicar SQL à mão não registra nada em
-`supabase_migrations.schema_migrations`, então o histórico local e o remoto
-passariam a divergir em silêncio — e a próxima pessoa a rodar as migrations
-não teria como saber o que já existe.
-
-Enquanto ela não roda, o cadastro de lead e de cliente falha ao salvar (tenta
-gravar coluna que não existe). O resto do sistema segue funcionando.
 
 ## Aplicar
 
