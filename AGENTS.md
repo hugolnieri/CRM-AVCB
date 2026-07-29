@@ -323,9 +323,13 @@ nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
 ## Prospecção a partir dos dados abertos da Receita
 
-`scripts/importar-receita.mjs` filtra o dump mensal do CNPJ (dadosabertos.rfb.gov.br)
-e produz um JSON; `Leads → Importar` revisa e grava. O download é manual porque
-o portal recusa IP de datacenter e os arquivos somam ~5 GB.
+`scripts/baixar-receita.mjs` traz o dump mensal do CNPJ
+(`arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/AAAA-MM/`);
+`scripts/importar-receita.mjs` filtra e produz um JSON; `Leads → Importar`
+revisa e grava. O download roda **da máquina de quem usa**, não de servidor: o
+portal recusa IP de datacenter, e daqui todo mês responde 404 mesmo em pasta que
+existe. Por isso o script descobre o mês andando para trás — a Receita publica
+com atraso variável, e chutar o mês corrente erraria na maioria dos dias.
 
 Três coisas que quebram este import e não são óbvias:
 
