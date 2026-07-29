@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createLead, deleteLead, fetchLeads, updateLead } from "@/lib/supabase/queries/leads";
+import { createLead, fetchLeads, updateLead } from "@/lib/supabase/queries/leads";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import type { LeadInput } from "@/types/lead";
 
@@ -28,11 +28,6 @@ export function useUpdateLeadInfo() {
   });
 }
 
-export function useDeleteLead() {
-  return useCrudMutation({
-    mutationFn: (id: string) => deleteLead(id),
-    invalidate: [["leads"]],
-    successMessage: "Lead excluído.",
-    errorMessage: "Erro ao excluir o lead.",
-  });
-}
+// A exclusão de lead vive em hooks/useExclusoes.ts, junto com a de cliente:
+// as duas passam pelo mesmo fluxo de solicitação/aprovação, e separá-las aqui
+// deixaria dois caminhos para a mesma regra.
