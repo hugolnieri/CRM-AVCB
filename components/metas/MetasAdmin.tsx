@@ -28,6 +28,7 @@ import { useServicos } from "@/hooks/useServicos";
 import { useActivitiesRecentes } from "@/hooks/useActivities";
 import { AdminDeleteButton } from "@/components/shared/AdminDeleteButton";
 import { formatarValor } from "@/components/metas/MetasProgresso";
+import { opcoesDeMembro } from "@/lib/equipe";
 import { corDoProgresso, metaVigente, progressoMeta } from "@/lib/metas";
 import {
   METRICA_LABELS,
@@ -121,7 +122,7 @@ export function MetasAdmin() {
 
       <Modal opened={novoOpened} onClose={fecharNovo} title={<Title order={3}>Nova meta</Title>}>
         <MetaForm
-          membros={(membros ?? []).map((m) => ({ value: m.id, label: m.fullName }))}
+          membros={opcoesDeMembro(membros ?? [])}
           submitting={create.isPending}
           submitLabel="Criar"
           onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
@@ -138,7 +139,7 @@ export function MetasAdmin() {
             <MetaForm
               key={emEdicao.id}
               meta={emEdicao}
-              membros={(membros ?? []).map((m) => ({ value: m.id, label: m.fullName }))}
+              membros={opcoesDeMembro(membros ?? [], emEdicao.memberId)}
               submitting={update.isPending}
               submitLabel="Salvar alterações"
               onSubmit={(patch) =>

@@ -103,17 +103,23 @@ export async function redefinirSenha(userId: string, senha: string): Promise<voi
   await chamarRotaEquipe({ acao: "redefinir_senha", userId, senha });
 }
 
-/** Único campo do próprio perfil que o usuário pode editar direto. */
-export async function updateOwnName(fullName: string): Promise<void> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Sessão expirada.");
+/**
+ * Desativar não é só apagar um `ativo` na tabela: o que barra a pessoa é o ban
+ * do usuário no Auth, e isso só a service role faz. A coluna anda junto (é o que
+ * esta tela lê), mas quem manda é o ban — ver app/api/equipe/route.ts.
+ */
+export async function definirAtivo(userId: string, ativo: boolean): Promise<void> {
+  await chamarRotaEquipe({ acao: "definir_ativo", userId, ativo });
+}
 
-  const { error } = await supabase
-    .from("team_members")
-    .update({ full_name: fullName })
-    .eq("id", user.id);
+/**
+ * Único campo de `team_members` com GRANT de UPDATE para `authenticated`. Quem
+ * decide de quem é a linha é a RLS: a própria (`team_members_update_self`) ou
+ * qualquer uma, se for admin (`team_members_update_admin`). `role` e `ativo`
+ * ficam de fora do grant de propósito e têm caminhos próprios.
+ */
+export async function updateMemberName(id: string, fullName: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("team_members").update({ full_name: fullName }).eq("id", id);
   if (error) throw error;
 }

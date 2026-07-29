@@ -3,6 +3,7 @@
 import { Button, Group, Select, Stack, Textarea, TextInput } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
+import { opcoesDeMembro } from "@/lib/equipe";
 import { exigirTexto } from "@/lib/validacao";
 import { PRIORIDADE_LABELS, type Tarefa, type TarefaInput, type TarefaPrioridade } from "@/types/tarefa";
 import type { TeamMember } from "@/types/team";
@@ -82,7 +83,7 @@ export function TarefaForm({
             description="Em branco = fica para os administradores"
             clearable
             searchable
-            data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+            data={opcoesDeMembro(membros, form.values.responsavelId)}
             {...form.getInputProps("responsavelId")}
           />
           <Select

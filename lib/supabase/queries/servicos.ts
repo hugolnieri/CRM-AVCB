@@ -195,3 +195,17 @@ export async function updateTipoServico(
     .eq("id", id);
   if (error) throw error;
 }
+
+/**
+ * Só sai do catálogo o tipo que nunca foi usado: `servicos.tipo_servico_id` é
+ * `on delete restrict`, então o banco recusa apagar um tipo com serviço
+ * registrado e a mensagem manda inativar (ver lib/errors.ts). É de propósito —
+ * o serviço lastreia certificado emitido, e o catálogo é o que dá sentido ao
+ * registro. Tipo que a empresa parou de vender vira `ativo = false`: some das
+ * listas e o histórico continua legível.
+ */
+export async function deleteTipoServico(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("tipos_servico").delete().eq("id", id);
+  if (error) throw error;
+}

@@ -19,6 +19,7 @@ import { IconSparkles } from "@tabler/icons-react";
 import { LEAD_ORIGENS } from "@/lib/pipeline/origens";
 import { normalizePhoneToE164 } from "@/lib/phone";
 import { servicosParaCnae, validarCnae } from "@/lib/cnae";
+import { opcoesDeMembro } from "@/lib/equipe";
 import { CnaeInput } from "@/components/shared/CnaeInput";
 import {
   exigirContato,
@@ -280,7 +281,7 @@ export function LeadForm({
               placeholder="Quem cuida deste lead"
               searchable
               withAsterisk
-              data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+              data={opcoesDeMembro(membros, form.values.assignedUserId)}
               {...form.getInputProps("assignedUserId")}
             />
           </Grid.Col>

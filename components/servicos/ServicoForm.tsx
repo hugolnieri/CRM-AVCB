@@ -16,6 +16,7 @@ import { DateInput, DateTimePicker } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import dayjs from "dayjs";
 import { nomeCliente, type Cliente } from "@/types/cliente";
+import { opcoesDeMembro } from "@/lib/equipe";
 import { sugerirVencimento } from "@/lib/servicos";
 import { rotuloTipo, type Servico, type ServicoInput, type ServicoStatus, type TipoServico } from "@/types/servico";
 import type { TeamMember } from "@/types/team";
@@ -231,7 +232,7 @@ export function ServicoForm({
           placeholder="Quem executa"
           clearable
           searchable
-          data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+          data={opcoesDeMembro(membros, form.values.responsavelId)}
           {...form.getInputProps("responsavelId")}
         />
 

@@ -4,6 +4,7 @@ import {
   createServico,
   createTipoServico,
   deleteServico,
+  deleteTipoServico,
   fetchServicos,
   fetchTiposServico,
   updateServico,
@@ -89,5 +90,14 @@ export function useUpdateTipoServico() {
     invalidate: [["tiposServico"]],
     successMessage: "Tipo atualizado.",
     errorMessage: "Erro ao salvar o tipo. Apenas administradores podem fazer isso.",
+  });
+}
+
+export function useDeleteTipoServico() {
+  return useCrudMutation({
+    mutationFn: (id: string) => deleteTipoServico(id),
+    invalidate: [["tiposServico"]],
+    successMessage: "Tipo excluído do catálogo.",
+    errorMessage: "Erro ao excluir o tipo. Apenas administradores podem fazer isso.",
   });
 }

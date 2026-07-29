@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  Divider,
   Group,
   Loader,
   Modal,
@@ -35,7 +36,13 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useTeamMembers } from "@/hooks/useCurrentMember";
-import { useCreateTipoServico, useServicos, useTiposServico, useUpdateTipoServico } from "@/hooks/useServicos";
+import {
+  useCreateTipoServico,
+  useDeleteTipoServico,
+  useServicos,
+  useTiposServico,
+  useUpdateTipoServico,
+} from "@/hooks/useServicos";
 import {
   useConfiguracoes,
   useNotificacoes,
@@ -47,6 +54,7 @@ import { RequireAdmin } from "@/components/shared/RequireAdmin";
 import { MetasAdmin } from "@/components/metas/MetasAdmin";
 import { AuditoriaTab } from "@/components/admin/AuditoriaTab";
 import { EquipeTab } from "@/components/admin/EquipeTab";
+import { AdminDeleteButton } from "@/components/shared/AdminDeleteButton";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
 import { testarEnvio, type ResultadoEnvio } from "@/lib/supabase/queries/jornada";
@@ -516,10 +524,25 @@ function NotificacoesTab() {
 
 function TiposTab() {
   const { data: tipos, isLoading } = useTiposServico();
+  const { data: servicos } = useServicos();
   const [novoOpened, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
   const [emEdicao, setEmEdicao] = useState<TipoServico | null>(null);
   const create = useCreateTipoServico();
   const update = useUpdateTipoServico();
+  const remove = useDeleteTipoServico();
+
+  // Quantos serviços dependem de cada tipo. É o que separa "engano no cadastro",
+  // que se apaga, de "parou de ser vendido", que se inativa — e é a mesma conta
+  // que o `on delete restrict` faz no banco, mostrada antes do clique em vez de
+  // depois do erro.
+  const usosPorTipo = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const servico of servicos ?? []) {
+      if (!servico.tipoServicoId) continue;
+      contagem.set(servico.tipoServicoId, (contagem.get(servico.tipoServicoId) ?? 0) + 1);
+    }
+    return contagem;
+  }, [servicos]);
 
   if (isLoading) return <Loader />;
 
@@ -545,6 +568,7 @@ function TiposTab() {
               <Table.Th>Validade</Table.Th>
               <Table.Th>Carga</Table.Th>
               <Table.Th>CNAEs</Table.Th>
+              <Table.Th>Usos</Table.Th>
               <Table.Th>Situação</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -572,6 +596,11 @@ function TiposTab() {
                   )}
                 </Table.Td>
                 <Table.Td>
+                  <Text size="sm" c={usosPorTipo.get(tipo.id) ? undefined : "dimmed"}>
+                    {usosPorTipo.get(tipo.id) ?? 0}
+                  </Text>
+                </Table.Td>
+                <Table.Td>
                   <Text size="sm" c={tipo.ativo ? undefined : "dimmed"}>
                     {tipo.ativo ? "Ativo" : "Inativo"}
                   </Text>
@@ -596,18 +625,68 @@ function TiposTab() {
         title={<Title order={3}>Editar tipo</Title>}
       >
         {emEdicao && (
-          <TipoForm
-            key={emEdicao.id}
-            tipo={emEdicao}
-            submitting={update.isPending}
-            submitLabel="Salvar alterações"
-            onSubmit={(patch) =>
-              update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
-            }
-          />
+          <Stack>
+            <TipoForm
+              key={emEdicao.id}
+              tipo={emEdicao}
+              submitting={update.isPending}
+              submitLabel="Salvar alterações"
+              onSubmit={(patch) =>
+                update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
+              }
+            />
+
+            <Divider />
+            <ExcluirTipo
+              emUso={usosPorTipo.get(emEdicao.id) ?? 0}
+              loading={remove.isPending}
+              onConfirm={() =>
+                remove.mutate(emEdicao.id, { onSuccess: () => setEmEdicao(null) })
+              }
+            />
+          </Stack>
         )}
       </Modal>
     </Stack>
+  );
+}
+
+/**
+ * Excluir do catálogo, e o motivo de quase nunca ser essa a resposta.
+ *
+ * Um tipo com serviço registrado é recusado pelo próprio banco (`on delete
+ * restrict`), então o botão sai da frente quando há uso e o texto explica o
+ * caminho certo — inativar. Aparece só quando o tipo nunca foi usado, que é o
+ * caso real de exclusão: erro de digitação, duplicata, teste.
+ */
+function ExcluirTipo({
+  emUso,
+  loading,
+  onConfirm,
+}: {
+  emUso: number;
+  loading: boolean;
+  onConfirm: () => void;
+}) {
+  if (emUso > 0) {
+    return (
+      <Text size="xs" c="dimmed">
+        Este tipo já foi usado em {emUso} {emUso === 1 ? "serviço" : "serviços"} e por isso não pode
+        ser excluído — o registro do serviço lastreia certificado emitido. Para tirá-lo das listas,
+        desmarque <strong>Ativo</strong> acima: o histórico continua legível.
+      </Text>
+    );
+  }
+
+  return (
+    <Group>
+      <AdminDeleteButton
+        loading={loading}
+        label="Excluir do catálogo"
+        confirmText="Este tipo nunca foi usado em nenhum serviço, então nada some junto. Não pode ser desfeito."
+        onConfirm={onConfirm}
+      />
+    </Group>
   );
 }
 

@@ -173,7 +173,11 @@ Duas regras que não podem ser afrouxadas:
 
 1. `team_members` tem `GRANT UPDATE (full_name)` apenas. `role` só muda pela RPC
    `set_member_role`, que checa `is_admin()`. RLS decide linhas, GRANT decide
-   colunas — sem os dois, qualquer colaborador se promove pelo console.
+   colunas — sem os dois, qualquer colaborador se promove pelo console. É essa
+   divisão que deixa `team_members_update_admin` (migration 0015) ser uma policy
+   de uma linha: ela libera a **linha** de qualquer pessoa para o admin corrigir
+   o nome, e o GRANT por coluna continua barrando `role` e `ativo` no mesmo
+   movimento.
 2. `audit_log` não tem policy de INSERT, UPDATE nem DELETE — **para ninguém**,
    nem admin. Só o gatilho `SECURITY DEFINER` escreve. É o que separa um
    registro de auditoria de um bloco de notas.
@@ -181,7 +185,7 @@ Duas regras que não podem ser afrouxadas:
 Ao escrever policy nova: sempre `to authenticated`, e chame a função como
 `(select public.is_admin())` para ela ser avaliada uma vez por statement.
 
-### Criar acesso e redefinir senha
+### Criar acesso, redefinir senha e desativar
 
 `app/api/equipe/route.ts` é a **única** parte do projeto que toca a
 `SUPABASE_SERVICE_ROLE_KEY`, e ela ignora RLS por completo. Duas razões para a
@@ -203,6 +207,30 @@ isso a pessoa ficaria presa esperando um e-mail que nunca chega. A senha aparece
 uma vez só na interface, e o modal segura o admin até ele copiar — o Supabase
 guarda apenas o hash, então perdê-la significa redefinir outra.
 
+**Desativar é banir no Auth; `team_members.ativo` é só o espelho legível disso.**
+Uma coluna que ninguém aplica não desativa ninguém: a pessoa continuaria
+entrando, a RLS continuaria deixando ela trabalhar, e a tela do admin diria
+"Inativo". Por isso a ação também mora nesta rota (a service role é quem bane) e
+o ban vem **antes** do flag — falhar entre os dois deixa alguém barrado que a
+tela mostra como ativo, corrigível com um segundo clique; a ordem inversa
+mostraria "Inativo" para quem continua entrando, que é a mentira perigosa. Mesmo
+raciocínio de `aprovarExclusao`. Quem já está com o sistema aberto continua até o
+access token expirar (≤1h) — dito na interface, não escondido.
+
+`ativo` não tem GRANT de UPDATE para `authenticated`, nem para admin: muda só
+pela RPC `set_member_ativo`, exatamente como `role` muda só por
+`set_member_role` — e ela recusa o admin desativar a si mesmo, pelo mesmo motivo
+de `set_member_role` não deixar ele se rebaixar. A rota podia escrever a coluna
+com a service role que já tem na mão e economizar a função; não escreve porque o
+gatilho `registrar_audit` grava `auth.uid()`, e escrita de service role deixaria
+o log dizendo que ninguém desativou ninguém.
+
+Desativado some das listas de responsável (`opcoesDeMembro`, `lib/equipe.ts`),
+mas continua aparecendo no registro que já era dele, marcado como inativo — se a
+opção sumisse, abrir aquele cadastro mostraria o campo vazio e salvar qualquer
+outra coisa apagaria calado a quem o trabalho pertencia. Filtro de relatório não
+usa isso: lá se quer justamente consultar o histórico de quem saiu.
+
 ### Exclusão de lead e cliente
 
 Apagar cliente cascateia serviços e notas — o histórico que comprova
@@ -216,6 +244,16 @@ registro morto — visível e corrigível. A ordem inversa deixaria um pedido
 "aprovado" para um registro que continua lá, que é mentira no histórico.
 
 "Inativar" segue como o caminho normal e o botão em destaque.
+
+### Exclusão de tipo do catálogo
+
+`servicos.tipo_servico_id` é `on delete restrict`, então o banco recusa apagar um
+tipo já usado — o serviço lastreia certificado emitido. A tela não descobre isso
+pelo erro: a aba Catálogo conta os usos de cada tipo e só mostra o botão de
+excluir para os que têm zero, que é o caso real de exclusão (erro de digitação,
+duplicata, teste). Com uso, no lugar do botão aparece a instrução de desmarcar
+`ativo`. A mensagem de `servicos_tipo_servico_id_fkey` fica em `lib/errors.ts`
+mesmo assim, porque a corrida entre a contagem e o clique existe.
 
 ### Log de usuário
 

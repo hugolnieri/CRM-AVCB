@@ -3,7 +3,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Criação de acesso e redefinição de senha, feitas pelo administrador.
+ * Criação de acesso, redefinição de senha e ativação/desativação, feitas pelo
+ * administrador.
  *
  * É a terceira (e mais delicada) rota de servidor do projeto. Existe por um
  * motivo técnico duro: o `supabase.auth.signUp()` do navegador **troca a sessão
@@ -25,16 +26,24 @@ import { createClient } from "@/lib/supabase/server";
  * `set_member_role`, chamada pelo cliente depois, que valida `is_admin()` no
  * banco. Aceitar `role` nesta rota abriria um segundo caminho para promoção,
  * e um caminho a mais é uma trava a menos.
+ *
+ * Desativar, ao contrário, é justamente o que precisa da service role: barrar
+ * alguém é banir o usuário no Auth, e `team_members.ativo` é só o espelho
+ * legível disso — ver `definirAtivo` abaixo.
  */
 
 const SENHA_MINIMA = 8;
 
+/** ~100 anos. O GoTrue não tem "para sempre"; tem duração, e "none" desfaz. */
+const BAN_INDEFINIDO = "876000h";
+
 interface Payload {
-  acao?: "criar" | "redefinir_senha";
+  acao?: "criar" | "redefinir_senha" | "definir_ativo";
   email?: string;
   senha?: string;
   fullName?: string;
   userId?: string;
+  ativo?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -82,15 +91,18 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // A senha é exigência das duas ações que a usam, e não da rota: `definir_ativo`
+  // não tem senha nenhuma para conferir.
   const senha = payload.senha ?? "";
-  if (senha.length < SENHA_MINIMA) {
-    return NextResponse.json(
-      { error: `A senha precisa ter ao menos ${SENHA_MINIMA} caracteres.` },
-      { status: 400 },
-    );
-  }
+  const senhaCurta = senha.length < SENHA_MINIMA;
+  const erroSenha = NextResponse.json(
+    { error: `A senha precisa ter ao menos ${SENHA_MINIMA} caracteres.` },
+    { status: 400 },
+  );
 
   if (payload.acao === "criar") {
+    if (senhaCurta) return erroSenha;
+
     const email = (payload.email ?? "").trim().toLowerCase();
     const fullName = (payload.fullName ?? "").trim();
     if (!email || !fullName) {
@@ -115,6 +127,8 @@ export async function POST(request: Request) {
   }
 
   if (payload.acao === "redefinir_senha") {
+    if (senhaCurta) return erroSenha;
+
     const userId = payload.userId ?? "";
     if (!userId) {
       return NextResponse.json({ error: "Informe de quem é a senha." }, { status: 400 });
@@ -123,6 +137,50 @@ export async function POST(request: Request) {
     const { error } = await admin.auth.admin.updateUserById(userId, { password: senha });
     if (error) {
       return NextResponse.json({ error: traduzirErro(error.message) }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (payload.acao === "definir_ativo") {
+    const userId = payload.userId ?? "";
+    const ativo = payload.ativo === true;
+    if (!userId) {
+      return NextResponse.json({ error: "Informe de quem é o acesso." }, { status: 400 });
+    }
+
+    // Mesma trava de `set_member_role`: sem ela o único administrador se
+    // desativa e tranca a equipe inteira do lado de fora, sem caminho de volta
+    // pela aplicação.
+    if (userId === user.id && !ativo) {
+      return NextResponse.json(
+        { error: "Você não pode desativar o próprio acesso." },
+        { status: 400 },
+      );
+    }
+
+    // O ban é a barreira; a coluna é o espelho. Por isso o ban vem primeiro:
+    // falhar entre os dois passos deixa alguém barrado que a tela ainda mostra
+    // como ativo — visível e corrigível com um segundo clique. A ordem inversa
+    // deixaria a tela dizendo "Inativo" para quem continua entrando, que é a
+    // mentira perigosa. (Mesmo raciocínio de `aprovarExclusao`.)
+    const { error: erroBan } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: ativo ? "none" : BAN_INDEFINIDO,
+    });
+    if (erroBan) {
+      return NextResponse.json({ error: traduzirErro(erroBan.message) }, { status: 400 });
+    }
+
+    // A coluna vai pela RPC, com o token de quem clicou, e NÃO pela service role
+    // que já está aqui do lado: o gatilho `registrar_audit` grava `auth.uid()`,
+    // e escrita de service role deixaria o log dizendo que ninguém desativou
+    // ninguém. A RPC revalida `is_admin()` no banco, então nada é afrouxado.
+    const { error: erroFlag } = await supabase.rpc("set_member_ativo", {
+      target: userId,
+      novo: ativo,
+    });
+    if (erroFlag) {
+      return NextResponse.json({ error: traduzirErro(erroFlag.message) }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });

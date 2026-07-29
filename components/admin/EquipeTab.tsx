@@ -12,6 +12,7 @@ import {
   PasswordInput,
   Select,
   Stack,
+  Switch,
   Table,
   Text,
   TextInput,
@@ -24,12 +25,19 @@ import {
   IconCheck,
   IconCopy,
   IconKey,
+  IconPencil,
   IconRefresh,
   IconUserPlus,
 } from "@tabler/icons-react";
 import { useCurrentMember, useTeamMembers } from "@/hooks/useCurrentMember";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import { criarAcesso, redefinirSenha, setMemberRole } from "@/lib/supabase/queries/team";
+import {
+  criarAcesso,
+  definirAtivo,
+  redefinirSenha,
+  setMemberRole,
+  updateMemberName,
+} from "@/lib/supabase/queries/team";
 import { gerarSenha, validarConfirmacao, validarSenha } from "@/lib/senha";
 import { exigirTexto, validarEmail } from "@/lib/validacao";
 import type { TeamMember, UserRole } from "@/types/team";
@@ -52,6 +60,7 @@ export function EquipeTab() {
 
   const [novoAberto, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
   const [redefinindo, setRedefinindo] = useState<TeamMember | null>(null);
+  const [renomeando, setRenomeando] = useState<TeamMember | null>(null);
   const [senhaEmMaos, setSenhaEmMaos] = useState<SenhaEmMaos | null>(null);
 
   const alterarPerfil = useCrudMutation({
@@ -77,6 +86,23 @@ export function EquipeTab() {
     errorMessage: "Erro ao redefinir a senha.",
   });
 
+  const renomear = useCrudMutation({
+    mutationFn: ({ id, fullName }: { id: string; fullName: string }) =>
+      updateMemberName(id, fullName),
+    // currentMember junto: o admin pode estar corrigindo o próprio nome, e o
+    // cabeçalho lê dessa chave.
+    invalidate: [["teamMembers"], ["currentMember"]],
+    successMessage: "Nome atualizado.",
+    errorMessage: "Erro ao alterar o nome.",
+  });
+
+  const alterarSituacao = useCrudMutation({
+    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => definirAtivo(id, ativo),
+    invalidate: [["teamMembers"]],
+    successMessage: (_data, { ativo }) => (ativo ? "Acesso reativado." : "Acesso desativado."),
+    errorMessage: "Erro ao alterar a situação do acesso.",
+  });
+
   if (isLoading) return <Loader />;
 
   return (
@@ -91,55 +117,104 @@ export function EquipeTab() {
         </Button>
       </Group>
 
-      <Table.ScrollContainer minWidth={720}>
+      <Table.ScrollContainer minWidth={880}>
         <Table striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Nome</Table.Th>
               <Table.Th>E-mail</Table.Th>
               <Table.Th>Perfil</Table.Th>
+              <Table.Th>Acesso</Table.Th>
               <Table.Th>Senha</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {(membros ?? []).map((membro) => (
-              <Table.Tr key={membro.id}>
-                <Table.Td>{membro.fullName}</Table.Td>
-                <Table.Td>{membro.email}</Table.Td>
-                <Table.Td>
-                  <Select
-                    data={PERFIS}
-                    value={membro.role}
-                    allowDeselect={false}
-                    // O banco também recusa (set_member_role levanta exceção),
-                    // mas desabilitar evita o erro previsível.
-                    disabled={membro.id === eu?.id || alterarPerfil.isPending}
-                    onChange={(value) =>
-                      value && alterarPerfil.mutate({ id: membro.id, role: value as UserRole })
-                    }
-                    w={180}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <Button
-                    size="compact-sm"
-                    variant="light"
-                    color="gray"
-                    leftSection={<IconKey size={14} />}
-                    onClick={() => setRedefinindo(membro)}
-                  >
-                    Redefinir
-                  </Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {(membros ?? []).map((membro) => {
+              const souEu = membro.id === eu?.id;
+              return (
+                <Table.Tr key={membro.id}>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      <Text size="sm" c={membro.ativo ? undefined : "dimmed"}>
+                        {membro.fullName}
+                      </Text>
+                      <Tooltip label="Editar nome" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          size="sm"
+                          onClick={() => setRenomeando(membro)}
+                        >
+                          <IconPencil size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c={membro.ativo ? undefined : "dimmed"}>
+                      {membro.email}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Select
+                      data={PERFIS}
+                      value={membro.role}
+                      allowDeselect={false}
+                      // O banco também recusa (set_member_role levanta exceção),
+                      // mas desabilitar evita o erro previsível.
+                      disabled={souEu || alterarPerfil.isPending}
+                      onChange={(value) =>
+                        value && alterarPerfil.mutate({ id: membro.id, role: value as UserRole })
+                      }
+                      w={180}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Switch
+                      checked={membro.ativo}
+                      // Mesma trava do perfil, e pelo mesmo motivo: o único
+                      // administrador não pode se trancar do lado de fora. A rota
+                      // recusa também, no servidor.
+                      disabled={souEu || alterarSituacao.isPending}
+                      label={membro.ativo ? "Ativo" : "Inativo"}
+                      onChange={(e) =>
+                        alterarSituacao.mutate({
+                          id: membro.id,
+                          ativo: e.currentTarget.checked,
+                        })
+                      }
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Button
+                      size="compact-sm"
+                      variant="light"
+                      color="gray"
+                      leftSection={<IconKey size={14} />}
+                      onClick={() => setRedefinindo(membro)}
+                    >
+                      Redefinir
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
 
       <Text size="xs" c="dimmed">
-        Você não pode alterar o próprio perfil — é o que impede o último administrador de trancar a
-        equipe do lado de fora. Redefinir a própria senha, sim: use o botão da sua linha.
+        Você não pode alterar o próprio perfil nem desativar o próprio acesso — é o que impede o
+        último administrador de trancar a equipe do lado de fora. Redefinir a própria senha, sim:
+        use o botão da sua linha.
+      </Text>
+
+      <Text size="xs" c="dimmed">
+        <strong>Desativar</strong> bloqueia o login e tira a pessoa das listas de responsável, sem
+        apagar nada: o histórico dela continua nos relatórios e nos registros que ela criou. Quem
+        estiver com o sistema aberto na hora pode continuar até a sessão expirar — no máximo uma
+        hora. É o caminho normal para quem sai da empresa; excluir a conta apagaria junto o que
+        ela registrou.
       </Text>
 
       {/* Novo acesso ------------------------------------------------------ */}
@@ -171,6 +246,27 @@ export function EquipeTab() {
                     novoAcesso: true,
                   }),
               })
+            }
+          />
+        )}
+      </Modal>
+
+      {/* Editar nome ------------------------------------------------------- */}
+      <Modal
+        opened={renomeando !== null}
+        onClose={() => setRenomeando(null)}
+        title={<Title order={4}>Editar nome</Title>}
+      >
+        {renomeando && (
+          <FormNome
+            key={renomeando.id}
+            membro={renomeando}
+            submitting={renomear.isPending}
+            onSubmit={(fullName) =>
+              renomear.mutate(
+                { id: renomeando.id, fullName },
+                { onSuccess: () => setRenomeando(null) },
+              )
             }
           />
         )}
@@ -336,6 +432,50 @@ function FormNovoMembro({
         <Group justify="flex-end">
           <Button type="submit" loading={submitting}>
             Criar acesso
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+  );
+}
+
+/**
+ * O e-mail não é editável junto: ele é a credencial de login, mora no Auth e não
+ * em `team_members`. Trocá-lo é outra operação, com outra consequência — a
+ * pessoa passa a entrar com outro endereço — e não cabe num campo ao lado do
+ * nome.
+ */
+function FormNome({
+  membro,
+  onSubmit,
+  submitting,
+}: {
+  membro: TeamMember;
+  onSubmit: (fullName: string) => void;
+  submitting: boolean;
+}) {
+  const form = useForm({
+    initialValues: { fullName: membro.fullName },
+    validate: { fullName: (v) => exigirTexto(v, "Informe o nome completo.") },
+  });
+
+  return (
+    <form onSubmit={form.onSubmit((v) => onSubmit(v.fullName.trim()))}>
+      <Stack>
+        <TextInput
+          label="Nome completo"
+          description={`Entra no sistema com ${membro.email}`}
+          withAsterisk
+          data-autofocus
+          {...form.getInputProps("fullName")}
+        />
+        <Text size="xs" c="dimmed">
+          O nome aparece nos relatórios, na agenda e no registro de auditoria — inclusive nos
+          lançamentos antigos, que guardam só o vínculo com a pessoa.
+        </Text>
+        <Group justify="flex-end">
+          <Button type="submit" loading={submitting}>
+            Salvar
           </Button>
         </Group>
       </Stack>

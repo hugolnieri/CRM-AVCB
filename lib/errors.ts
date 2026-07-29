@@ -18,6 +18,12 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   activities_one_owner: "A nota precisa estar vinculada a um lead ou a um cliente.",
   treinamentos_tipo_treinamento_id_fkey:
     "Este tipo de treinamento está em uso e não pode ser excluído. Desative-o.",
+  tipos_servico_nome_key: "Já existe um tipo com este nome no catálogo.",
+  // on delete restrict em servicos.tipo_servico_id: o registro do serviço
+  // lastreia certificado emitido, então o tipo que o originou não some do
+  // catálogo. Desativar tira das listas e mantém o histórico legível.
+  servicos_tipo_servico_id_fkey:
+    "Este tipo já foi usado em serviços registrados e não pode ser excluído. Desative-o para tirá-lo das listas.",
 };
 
 /**

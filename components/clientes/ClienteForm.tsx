@@ -14,6 +14,7 @@ import {
 import { useForm } from "@mantine/form";
 import { normalizePhoneToE164 } from "@/lib/phone";
 import { validarCnae } from "@/lib/cnae";
+import { opcoesDeMembro } from "@/lib/equipe";
 import { CnaeInput } from "@/components/shared/CnaeInput";
 import {
   exigirContato,
@@ -148,7 +149,7 @@ export function ClienteForm({
               placeholder="Quem cuida desta conta"
               searchable
               withAsterisk
-              data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+              data={opcoesDeMembro(membros, form.values.responsavelId)}
               {...form.getInputProps("responsavelId")}
             />
           </Grid.Col>
