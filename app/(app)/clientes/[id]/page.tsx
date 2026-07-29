@@ -7,6 +7,7 @@ import {
   Anchor,
   Badge,
   Button,
+  Divider,
   Group,
   Loader,
   Modal,
@@ -34,8 +35,22 @@ import { CopyableField } from "@/components/shared/CopyableField";
 import { NoteComposer } from "@/components/leads/NoteComposer";
 import { ActivityTimeline } from "@/components/leads/ActivityTimeline";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
+import { ExclusaoControl } from "@/components/shared/ExclusaoControl";
 import { SITUACAO_LABELS, itensVenciveis, situacaoCliente } from "@/lib/vencimentos";
 import { nomeCliente } from "@/types/cliente";
+
+/**
+ * O que a exclusão leva junto, em número. Serviços e notas têm FK em cascata a
+ * partir de `clientes` — dizer "isto apaga 12 serviços" é a diferença entre uma
+ * confirmação informada e um clique no escuro.
+ */
+function descreverCascata(servicos: number, notas: number): string | undefined {
+  const partes: string[] = [];
+  if (servicos > 0) partes.push(`${servicos} ${servicos === 1 ? "serviço" : "serviços"}`);
+  if (notas > 0) partes.push(`${notas} ${notas === 1 ? "nota" : "notas"}`);
+  if (partes.length === 0) return undefined;
+  return `Isto apaga também ${partes.join(" e ")} — é o histórico que comprova conformidade.`;
+}
 
 export default function ClienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -188,9 +203,19 @@ export default function ClienteDetalhePage() {
               </Button>
             </Group>
             <Text size="xs" c="dimmed">
-              Clientes não são excluídos: inativar preserva todo o histórico de serviços, que é o
-              que comprova conformidade.
+              Inativar preserva o histórico de serviços, que é o que comprova conformidade — é o
+              caminho certo para um cliente que saiu.
             </Text>
+
+            <Divider my="xs" />
+
+            <ExclusaoControl
+              entidade="cliente"
+              registroId={cliente.id}
+              rotulo={nomeCliente(cliente)}
+              cascata={descreverCascata(doCliente.length, activities?.length ?? 0)}
+              onExcluido={() => router.push("/clientes")}
+            />
           </Stack>
         </Tabs.Panel>
 

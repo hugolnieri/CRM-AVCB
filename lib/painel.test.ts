@@ -212,6 +212,138 @@ describe("pendências", () => {
     expect(tipos(naoVence)).not.toContain("vencimento_ausente");
   });
 
+  // O caso que originou o menu de tarefas: treinamento marcado e ninguém
+  // definido para dar a aula.
+  it("flags a training with no instructor", () => {
+    const r = computePainel(
+      {
+        ...vazio,
+        clientes: [makeCliente({ id: "c1", nomeFantasia: "Ki Jóia" })],
+        tipos: [tipoComValidade],
+        servicos: [
+          makeServico({
+            id: "s1",
+            clienteId: "c1",
+            tipoServicoId: "tipo-1",
+            status: "agendado",
+            dataAgendada: now.add(5, "day").toISOString(),
+            dataRealizacao: null,
+            dataVencimento: null,
+            instrutor: null,
+          }),
+        ],
+      },
+      now,
+    );
+    expect(tipos(r)).toContain("servico_sem_instrutor");
+    expect(r.pendencias.find((p) => p.tipo === "servico_sem_instrutor")?.descricao).toContain(
+      "Ki Jóia",
+    );
+  });
+
+  it("treats a blank instructor the same as none", () => {
+    const r = computePainel(
+      {
+        ...vazio,
+        clientes: [makeCliente({ id: "c1" })],
+        tipos: [tipoComValidade],
+        servicos: [
+          makeServico({ id: "s1", clienteId: "c1", tipoServicoId: "tipo-1", instrutor: "   " }),
+        ],
+      },
+      now,
+    );
+    expect(tipos(r)).toContain("servico_sem_instrutor");
+  });
+
+  it("does not ask for an instructor on a non-training service", () => {
+    const laudo = makeTipoServico({ id: "tipo-3", categoria: "servico" });
+    const r = computePainel(
+      {
+        ...vazio,
+        clientes: [makeCliente({ id: "c1" })],
+        tipos: [laudo],
+        servicos: [
+          makeServico({ id: "s1", clienteId: "c1", tipoServicoId: "tipo-3", instrutor: null }),
+        ],
+      },
+      now,
+    );
+    expect(tipos(r)).not.toContain("servico_sem_instrutor");
+  });
+
+  // Ninguém precisa achar instrutor para o que não vai acontecer.
+  it("ignores cancelled services", () => {
+    const r = computePainel(
+      {
+        ...vazio,
+        clientes: [makeCliente({ id: "c1" })],
+        tipos: [tipoComValidade],
+        servicos: [
+          makeServico({
+            id: "s1",
+            clienteId: "c1",
+            tipoServicoId: "tipo-1",
+            status: "cancelado",
+            dataRealizacao: null,
+            instrutor: null,
+          }),
+        ],
+      },
+      now,
+    );
+    expect(tipos(r)).not.toContain("servico_sem_instrutor");
+  });
+
+  it("surfaces a pending deletion request for the admin to decide", () => {
+    const r = computePainel(
+      {
+        ...vazio,
+        solicitacoes: [
+          {
+            id: "sol-1",
+            entidade: "cliente",
+            registroId: "c9",
+            rotulo: "Padaria São José",
+            motivo: "duplicado",
+            status: "pendente",
+            solicitadoPor: "m2",
+            decididoPor: null,
+            decididoEm: null,
+            observacao: null,
+            createdAt: "",
+            updatedAt: "",
+          },
+        ],
+      },
+      now,
+    );
+    const pendencia = r.pendencias.find((p) => p.tipo === "exclusao_solicitada");
+    expect(pendencia?.descricao).toContain("Padaria São José");
+    expect(pendencia?.href).toBe("/clientes/c9");
+  });
+
+  it("ignores requests that were already decided", () => {
+    const base = {
+      id: "sol-1",
+      entidade: "cliente" as const,
+      registroId: "c9",
+      rotulo: "X",
+      motivo: null,
+      solicitadoPor: null,
+      decididoPor: "m1",
+      decididoEm: "2026-07-27T10:00:00Z",
+      observacao: null,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const r = computePainel(
+      { ...vazio, solicitacoes: [{ ...base, status: "aprovada" }, { ...base, status: "recusada" }] },
+      now,
+    );
+    expect(tipos(r)).not.toContain("exclusao_solicitada");
+  });
+
   it("gives every pendência a unique id and a destination", () => {
     const r = computePainel(
       {

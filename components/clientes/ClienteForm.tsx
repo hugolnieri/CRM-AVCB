@@ -12,6 +12,15 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { normalizePhoneToE164 } from "@/lib/phone";
+import {
+  exigirContato,
+  exigirTexto,
+  validarCnpj,
+  validarEmail,
+  validarTelefone,
+  validarUf,
+} from "@/lib/validacao";
+import { useCurrentMember } from "@/hooks/useCurrentMember";
 import type { Cliente, ClienteInput } from "@/types/cliente";
 import type { TipoServico } from "@/types/servico";
 import type { TeamMember } from "@/types/team";
@@ -42,6 +51,7 @@ export function ClienteForm({
   submitLabel = "Salvar",
 }: Props) {
   const base = cliente ?? draft;
+  const { data: membroAtual } = useCurrentMember();
 
   const form = useForm({
     initialValues: {
@@ -56,14 +66,21 @@ export function ClienteForm({
       cidade: base?.cidade ?? "",
       uf: base?.uf ?? "",
       cep: base?.cep ?? "",
-      responsavelId: base?.responsavelId ?? null,
+      responsavelId: base?.responsavelId ?? membroAtual?.id ?? null,
       possiveisServicos: base?.possiveisServicos ?? [],
       observacoes: base?.observacoes ?? "",
     },
+    // As mesmas regras do LeadForm, pela razão explicada em lib/validacao.ts:
+    // se o cadastro de cliente exigisse algo a mais, a conversão de lead
+    // produziria um cliente que não passa no próprio formulário.
     validate: {
-      razaoSocial: (value) => (value.trim().length < 2 ? "Informe a razão social." : null),
-      email: (value) =>
-        value.trim() === "" || /^\S+@\S+\.\S+$/.test(value) ? null : "E-mail inválido.",
+      razaoSocial: (value) => exigirTexto(value, "Informe a razão social."),
+      contatoNome: (value) => exigirTexto(value, "Informe quem é o contato na empresa."),
+      cnpj: validarCnpj,
+      uf: validarUf,
+      telefone: (value, values) => exigirContato(value, values.email) ?? validarTelefone(value),
+      email: (value, values) => exigirContato(values.telefone, value) ?? validarEmail(value),
+      responsavelId: (value) => (value ? null : "Escolha um responsável."),
     },
   });
 
@@ -98,10 +115,24 @@ export function ClienteForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <TextInput label="Nome fantasia" {...form.getInputProps("nomeFantasia")} />
           <TextInput label="CNPJ" placeholder="00.000.000/0000-00" {...form.getInputProps("cnpj")} />
-          <TextInput label="Contato" placeholder="Nome de quem atende" {...form.getInputProps("contatoNome")} />
+          <TextInput
+            label="Contato"
+            placeholder="Nome de quem atende"
+            withAsterisk
+            {...form.getInputProps("contatoNome")}
+          />
           <TextInput label="Cargo do contato" {...form.getInputProps("contatoCargo")} />
-          <TextInput label="Telefone" placeholder="(15) 99999-8888" {...form.getInputProps("telefone")} />
-          <TextInput label="E-mail" {...form.getInputProps("email")} />
+          <TextInput
+            label="Telefone"
+            placeholder="(15) 99999-8888"
+            description="Telefone ou e-mail — ao menos um"
+            {...form.getInputProps("telefone")}
+          />
+          <TextInput
+            label="E-mail"
+            description="Telefone ou e-mail — ao menos um"
+            {...form.getInputProps("email")}
+          />
         </SimpleGrid>
 
         <TextInput label="Endereço" placeholder="Rua, número, bairro" {...form.getInputProps("endereco")} />
@@ -115,8 +146,8 @@ export function ClienteForm({
         <Select
           label="Responsável"
           placeholder="Quem cuida desta conta"
-          clearable
           searchable
+          withAsterisk
           data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
           {...form.getInputProps("responsavelId")}
         />

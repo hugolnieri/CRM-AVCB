@@ -103,10 +103,24 @@ export async function updateCliente(id: string, patch: Partial<ClienteInput>): P
 }
 
 /**
- * Não há DELETE de cliente — nem policy no banco. Treinamentos, serviços e notas
- * cascateiam a partir dele, então apagar destruiria o histórico de conformidade
- * inteiro da empresa. Cliente que saiu vira inativo e some da lista padrão.
+ * O caminho normal para um cliente que saiu. Serviços e notas cascateiam a
+ * partir de `clientes`, então inativar é o que preserva o histórico de
+ * conformidade — que é justamente o que comprova o trabalho feito.
  */
 export async function inativarCliente(id: string, ativo: boolean): Promise<void> {
   return updateCliente(id, { status: ativo ? "ativo" : "inativo" });
+}
+
+/**
+ * Exclusão de verdade, com a cascata inteira: serviços e notas do cliente somem
+ * junto. Restrita a admin pela RLS (`clientes_delete_admin`, migration 0010) —
+ * um colaborador recebe 0 linhas afetadas e passa por
+ * `solicitacoes_exclusao` em vez disso.
+ *
+ * O `audit_log` sobrevive: ele não tem FK para cá, de propósito.
+ */
+export async function deleteCliente(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("clientes").delete().eq("id", id);
+  if (error) throw error;
 }

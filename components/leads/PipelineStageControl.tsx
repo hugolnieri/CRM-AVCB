@@ -1,9 +1,13 @@
 "use client";
 
-import { Button, Group, Paper, Select, Text } from "@mantine/core";
+import { Badge, Button, Group, Paper, Select, Text } from "@mantine/core";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
+import {
+  PIPELINE_STAGES,
+  PIPELINE_STAGE_COLORS,
+  PIPELINE_STAGE_LABELS,
+} from "@/lib/pipeline/stages";
 import { useUpdateLeadStage } from "@/hooks/useUpdateLead";
 import { getErrorMessage } from "@/lib/errors";
 import type { Lead, PipelineStage } from "@/types/lead";
@@ -60,6 +64,20 @@ export function PipelineStageControl({ lead }: { lead: Lead }) {
           onChange={(value) => value && changeStage(value as PipelineStage)}
           allowDeselect={false}
           disabled={updateStage.isPending}
+          leftSection={
+            <Badge color={PIPELINE_STAGE_COLORS[lead.pipelineStage]} circle size="xs" />
+          }
+          renderOption={({ option }) => (
+            <Group gap="xs" wrap="nowrap">
+              <Badge
+                color={PIPELINE_STAGE_COLORS[option.value as PipelineStage]}
+                circle
+                size="xs"
+                style={{ flexShrink: 0 }}
+              />
+              <Text size="sm">{option.label}</Text>
+            </Group>
+          )}
           style={{ flex: 1 }}
         />
         <Button

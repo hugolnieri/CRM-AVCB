@@ -25,6 +25,7 @@ import {
   IconBell,
   IconChartBar,
   IconClockHour4,
+  IconHistory,
   IconListDetails,
   IconPlus,
   IconTargetArrow,
@@ -43,6 +44,7 @@ import { useActivitiesRecentes } from "@/hooks/useActivities";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { RequireAdmin } from "@/components/shared/RequireAdmin";
 import { MetasAdmin } from "@/components/metas/MetasAdmin";
+import { AuditoriaTab } from "@/components/admin/AuditoriaTab";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
 import { setMemberRole } from "@/lib/supabase/queries/team";
@@ -72,6 +74,9 @@ export default function AdminPage() {
             <Tabs.Tab value="equipe" leftSection={<IconUsers size={14} />}>
               Equipe
             </Tabs.Tab>
+            <Tabs.Tab value="registro" leftSection={<IconHistory size={14} />}>
+              Registro
+            </Tabs.Tab>
             <Tabs.Tab value="notificacoes" leftSection={<IconBell size={14} />}>
               Notificações
             </Tabs.Tab>
@@ -85,6 +90,9 @@ export default function AdminPage() {
           </Tabs.Panel>
           <Tabs.Panel value="metas" pt="md">
             <MetasAdmin />
+          </Tabs.Panel>
+          <Tabs.Panel value="registro" pt="md">
+            <AuditoriaTab />
           </Tabs.Panel>
           <Tabs.Panel value="jornada" pt="md">
             <JornadaTab />

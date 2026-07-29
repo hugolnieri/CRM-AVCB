@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconChecklist,
   IconLayoutDashboard,
   IconLayoutKanban,
   IconList,
@@ -29,6 +30,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
+import { AvisosBell } from "@/components/shared/AvisosBell";
 
 /**
  * Serviços e vencimentos NAO estao aqui de proposito. Servico se cadastra pelo
@@ -47,6 +49,7 @@ const NAV_GROUPS: {
     items: [
       { href: "/dashboard", label: "Painel", icon: IconLayoutDashboard },
       { href: "/agenda", label: "Agenda", icon: IconCalendarClock },
+      { href: "/tarefas", label: "Tarefas", icon: IconChecklist },
     ],
   },
   {
@@ -101,6 +104,7 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
             <Title order={4}>SEICO</Title>
           </Group>
           <Group gap="xs">
+            <AvisosBell />
             <ActionIcon
               variant="subtle"
               color="gray"

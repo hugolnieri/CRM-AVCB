@@ -14,6 +14,15 @@ import {
 import { useForm } from "@mantine/form";
 import { LEAD_ORIGENS } from "@/lib/pipeline/origens";
 import { normalizePhoneToE164 } from "@/lib/phone";
+import {
+  exigirContato,
+  exigirTexto,
+  validarCnpj,
+  validarEmail,
+  validarTelefone,
+  validarUf,
+} from "@/lib/validacao";
+import { useCurrentMember } from "@/hooks/useCurrentMember";
 import type { Lead, LeadInput } from "@/types/lead";
 import type { TipoServico } from "@/types/servico";
 import type { TeamMember } from "@/types/team";
@@ -42,6 +51,8 @@ export function LeadForm({
   submitting,
   submitLabel = "Salvar",
 }: Props) {
+  const { data: membroAtual } = useCurrentMember();
+
   const form = useForm({
     initialValues: {
       name: lead?.name ?? "",
@@ -55,13 +66,23 @@ export function LeadForm({
       origem: lead?.origem ?? null,
       interesse: lead?.interesse ?? "",
       possiveisServicos: lead?.possiveisServicos ?? [],
-      assignedUserId: lead?.assignedUserId ?? null,
+      // Na criação já nasce com quem está cadastrando. Lead sem dono não conta
+      // para ninguém na métrica `leads_novos` de lib/metas.ts.
+      assignedUserId: lead?.assignedUserId ?? membroAtual?.id ?? null,
       valorEstimado: lead?.valorEstimado ?? ("" as number | ""),
     },
     validate: {
-      name: (value) => (value.trim().length < 2 ? "Informe o nome da empresa." : null),
-      email: (value) =>
-        value.trim() === "" || /^\S+@\S+\.\S+$/.test(value) ? null : "E-mail inválido.",
+      name: (value) => exigirTexto(value, "Informe o nome da empresa."),
+      contatoNome: (value) => exigirTexto(value, "Informe quem é o contato na empresa."),
+      cnpj: validarCnpj,
+      uf: validarUf,
+      // Telefone e e-mail são um par: a regra do par acende nos dois campos, e
+      // cada um valida o próprio formato por cima disso.
+      phoneRaw: (value, values) =>
+        exigirContato(value, values.email) ?? validarTelefone(value),
+      email: (value, values) => exigirContato(values.phoneRaw, value) ?? validarEmail(value),
+      origem: (value) => (value ? null : "Informe como o lead chegou."),
+      assignedUserId: (value) => (value ? null : "Escolha um responsável."),
     },
   });
 
@@ -97,23 +118,42 @@ export function LeadForm({
         />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput label="Contato" placeholder="Nome de quem atende" {...form.getInputProps("contatoNome")} />
+          <TextInput
+            label="Contato"
+            placeholder="Nome de quem atende"
+            withAsterisk
+            {...form.getInputProps("contatoNome")}
+          />
           <TextInput label="CNPJ" placeholder="00.000.000/0000-00" {...form.getInputProps("cnpj")} />
-          <TextInput label="Telefone" placeholder="(15) 99999-8888" {...form.getInputProps("phoneRaw")} />
-          <TextInput label="E-mail" placeholder="contato@empresa.com.br" {...form.getInputProps("email")} />
+          <TextInput
+            label="Telefone"
+            placeholder="(15) 99999-8888"
+            description="Telefone ou e-mail — ao menos um"
+            {...form.getInputProps("phoneRaw")}
+          />
+          <TextInput
+            label="E-mail"
+            placeholder="contato@empresa.com.br"
+            description="Telefone ou e-mail — ao menos um"
+            {...form.getInputProps("email")}
+          />
         </SimpleGrid>
 
         <TextInput label="Endereço" placeholder="Rua, número, bairro" {...form.getInputProps("address")} />
 
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <TextInput label="Cidade" {...form.getInputProps("cidade")} />
+          <TextInput
+            label="Cidade"
+            description="Posiciona o lead no mapa do pipeline"
+            {...form.getInputProps("cidade")}
+          />
           <TextInput label="UF" maxLength={2} {...form.getInputProps("uf")} />
           <Select
             label="Origem"
             placeholder="Como chegou"
             data={LEAD_ORIGENS}
             searchable
-            clearable
+            withAsterisk
             {...form.getInputProps("origem")}
           />
         </SimpleGrid>
@@ -138,8 +178,8 @@ export function LeadForm({
         <Select
           label="Responsável"
           placeholder="Quem cuida deste lead"
-          clearable
           searchable
+          withAsterisk
           data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
           {...form.getInputProps("assignedUserId")}
         />

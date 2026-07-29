@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@mantine/core";
 import { DataTable } from "@/components/shared/DataTable";
 import { SITUACAO_LABELS, situacaoCliente, type ItemVencivel } from "@/lib/vencimentos";
-import { nomeCliente, type Cliente } from "@/types/cliente";
+import { CLIENTE_STATUS_LABELS, nomeCliente, type Cliente } from "@/types/cliente";
 
 interface Props {
   clientes: Cliente[];
@@ -30,6 +30,9 @@ export function ClientesTable({ clientes, itens, onRowClick }: Props) {
       {
         id: "situacao",
         header: "Situação",
+        // Derivada de `itens`, não de uma coluna da linha: não há valor para o
+        // TanStack comparar.
+        enableSorting: false,
         cell: (c) => {
           const { label, color } = SITUACAO_LABELS[situacaoCliente(c.row.original.id, itens)];
           return (
@@ -42,12 +45,17 @@ export function ClientesTable({ clientes, itens, onRowClick }: Props) {
       {
         accessorKey: "status",
         header: "",
-        cell: (c) =>
-          c.getValue() === "inativo" ? (
-            <Badge color="gray" variant="outline">
-              Inativo
+        enableSorting: false,
+        cell: (c) => {
+          const status = c.getValue() as Cliente["status"];
+          if (status === "ativo") return null;
+          const { label, color } = CLIENTE_STATUS_LABELS[status];
+          return (
+            <Badge color={color} variant="outline">
+              {label}
             </Badge>
-          ) : null,
+          );
+        },
       },
     ],
     [itens],

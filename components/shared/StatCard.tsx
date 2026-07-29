@@ -52,11 +52,11 @@ export function BreakdownCard({ title, items }: { title: string; items: CountIte
             <div key={item.key}>
               <Group justify="space-between" gap="xs">
                 <Text size="sm">{item.label}</Text>
-                <Text size="sm" fw={500}>
+                <Text size="sm" fw={500} c={item.color}>
                   {item.count}
                 </Text>
               </Group>
-              <Progress value={(item.count / max) * 100} size="sm" mt={2} />
+              <Progress value={(item.count / max) * 100} color={item.color} size="sm" mt={2} />
             </div>
           ))}
         </Stack>

@@ -2,6 +2,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { Card, Text, Group, Tooltip } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { PIPELINE_STAGE_COLORS } from "@/lib/pipeline/stages";
 import type { Lead } from "@/types/lead";
 
 /**
@@ -28,6 +29,9 @@ export function LeadCardView({
         cursor: "grab",
         opacity: dragging ? 0.4 : 1,
         width: overlay ? 228 : undefined,
+        // Borda na cor da etapa: no DragOverlay o card sai da coluna e perde o
+        // contexto de onde veio, então ele carrega a própria cor junto.
+        borderLeft: `3px solid var(--mantine-color-${PIPELINE_STAGE_COLORS[lead.pipelineStage]}-6)`,
       }}
     >
       <Text fw={500} size="sm">

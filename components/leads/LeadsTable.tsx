@@ -4,7 +4,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Text } from "@mantine/core";
 import dayjs from "dayjs";
 import { DataTable } from "@/components/shared/DataTable";
-import { PIPELINE_STAGE_LABELS } from "@/lib/pipeline/stages";
+import { StageBadge } from "@/components/leads/StageBadge";
+import { ordenarPorEtapa } from "@/lib/pipeline/ordenacao";
 import type { Lead } from "@/types/lead";
 
 const columns: ColumnDef<Lead>[] = [
@@ -22,7 +23,10 @@ const columns: ColumnDef<Lead>[] = [
   {
     accessorKey: "pipelineStage",
     header: "Etapa",
-    cell: (c) => PIPELINE_STAGE_LABELS[c.getValue() as Lead["pipelineStage"]],
+    // Sem isto a ordenação seria alfabética pelo enum, e "fechado_ganho" viria
+    // antes de "novo_lead".
+    sortingFn: ordenarPorEtapa,
+    cell: (c) => <StageBadge stage={c.getValue() as Lead["pipelineStage"]} />,
   },
   {
     accessorKey: "followUpAt",

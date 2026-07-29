@@ -2,6 +2,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { nomeCliente, type Cliente } from "@/types/cliente";
 import type { Lead } from "@/types/lead";
 import type { Servico, TipoServico } from "@/types/servico";
+import type { SolicitacaoExclusao } from "@/types/exclusao";
 import { agruparPorBucket, itensVenciveis, type ItemVencivel } from "@/lib/vencimentos";
 
 export type PendenciaTipo =
@@ -9,7 +10,9 @@ export type PendenciaTipo =
   | "cliente_sem_servico"
   | "vencimento_ausente"
   | "conversao_pendente"
-  | "agendado_atrasado";
+  | "agendado_atrasado"
+  | "servico_sem_instrutor"
+  | "exclusao_solicitada";
 
 export interface Pendencia {
   id: string;
@@ -34,6 +37,8 @@ interface Entrada {
   servicos: Servico[];
   tipos: TipoServico[];
   leads: Lead[];
+  /** Opcional: telas que não carregam pedidos de exclusão simplesmente omitem. */
+  solicitacoes?: SolicitacaoExclusao[];
 }
 
 /**
@@ -44,7 +49,7 @@ interface Entrada {
  * as cinco coisas que exigem alguém agir — e cada uma leva a uma tela.
  */
 export function computePainel(
-  { clientes, servicos, tipos, leads }: Entrada,
+  { clientes, servicos, tipos, leads, solicitacoes = [] }: Entrada,
   now: Dayjs = dayjs(),
 ): PainelResumo {
   const ativos = clientes.filter((c) => c.status === "ativo");
@@ -59,14 +64,62 @@ export function computePainel(
     servicosAgendados: agendados.length,
     proximosVencimentos: grupos.esta_semana.length + grupos.este_mes.length,
     vencidos: grupos.vencido.length,
+    // Ordem = severidade. A lista é consumida de cima para baixo no Painel, em
+    // /tarefas e no sino, então ela é a prioridade em todos os três.
     pendencias: [
       ...pendenciasVencidas(grupos.vencido),
+      ...pendenciasExclusaoSolicitada(solicitacoes),
       ...pendenciasAgendadoAtrasado(agendados, clientes, now),
+      ...pendenciasSemInstrutor(servicos, tipos, clientes),
       ...pendenciasConversao(leads, clientes),
       ...pendenciasClienteSemServico(ativos, realizados),
       ...pendenciasVencimentoAusente(realizados, tipos),
     ],
   };
+}
+
+/**
+ * Treinamento marcado sem instrutor definido — o caso que originou o menu de
+ * tarefas. Só vale para `categoria = 'treinamento'`: um laudo de insalubridade
+ * não tem instrutor, e é exatamente para essa distinção que `categoria` existe.
+ *
+ * Serviço cancelado não conta: ninguém precisa achar instrutor para o que não
+ * vai acontecer.
+ */
+function pendenciasSemInstrutor(
+  servicos: Servico[],
+  tipos: TipoServico[],
+  clientes: Cliente[],
+): Pendencia[] {
+  const categoriaPorTipo = new Map(tipos.map((t) => [t.id, t.categoria]));
+  const nomePorId = new Map(clientes.map((c) => [c.id, nomeCliente(c)]));
+
+  return servicos
+    .filter(
+      (s) =>
+        s.status !== "cancelado" &&
+        (s.instrutor === null || s.instrutor.trim() === "") &&
+        s.tipoServicoId !== null &&
+        categoriaPorTipo.get(s.tipoServicoId) === "treinamento",
+    )
+    .map((s) => ({
+      id: `sem-instrutor-${s.id}`,
+      tipo: "servico_sem_instrutor" as const,
+      descricao: `${nomePorId.get(s.clienteId) ?? "Cliente"}: ${s.tipoNome} está sem instrutor definido`,
+      href: `/clientes/${s.clienteId}`,
+    }));
+}
+
+/** Pedido de exclusão esperando decisão. Só o admin pode resolver. */
+function pendenciasExclusaoSolicitada(solicitacoes: SolicitacaoExclusao[]): Pendencia[] {
+  return solicitacoes
+    .filter((s) => s.status === "pendente")
+    .map((s) => ({
+      id: `exclusao-${s.id}`,
+      tipo: "exclusao_solicitada" as const,
+      descricao: `Pedido de exclusão do ${s.entidade} "${s.rotulo}" aguarda sua decisão`,
+      href: s.entidade === "cliente" ? `/clientes/${s.registroId}` : "/leads",
+    }));
 }
 
 function pendenciasVencidas(vencidos: ItemVencivel[]): Pendencia[] {
@@ -152,8 +205,21 @@ function pendenciasVencimentoAusente(realizados: Servico[], tipos: TipoServico[]
 
 export const PENDENCIA_LABELS: Record<PendenciaTipo, { label: string; color: string }> = {
   vencido: { label: "Vencido", color: "red" },
+  exclusao_solicitada: { label: "Exclusão pedida", color: "red" },
   agendado_atrasado: { label: "Agendamento atrasado", color: "orange" },
+  servico_sem_instrutor: { label: "Sem instrutor", color: "orange" },
   conversao_pendente: { label: "Conversão pendente", color: "blue" },
   cliente_sem_servico: { label: "Sem serviço", color: "yellow" },
   vencimento_ausente: { label: "Dado incompleto", color: "gray" },
 };
+
+/**
+ * Pendência que só o administrador resolve. Alimenta o filtro do sino e da
+ * lista de tarefas — um colaborador não precisa ver pedido de exclusão nem
+ * cliente sem serviço, que não são trabalho dele.
+ */
+export const PENDENCIAS_DE_ADMIN: ReadonlySet<PendenciaTipo> = new Set<PendenciaTipo>([
+  "exclusao_solicitada",
+  "cliente_sem_servico",
+  "vencimento_ausente",
+]);

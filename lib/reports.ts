@@ -5,6 +5,8 @@ export interface CountItem {
   key: string;
   label: string;
   count: number;
+  /** Opcional: quando a categoria tem cor própria (etapa do funil, por exemplo). */
+  color?: string;
 }
 
 export interface LeadReports {
@@ -41,6 +43,7 @@ export function computeReports(leads: Lead[]): LeadReports {
     key: s.value,
     label: s.label,
     count: stageCount(s.value),
+    color: s.color,
   }));
 
   const origemMap = new Map<string, number>();

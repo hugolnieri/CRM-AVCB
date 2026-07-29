@@ -6,6 +6,7 @@ import { IconPencil, IconPhone } from "@tabler/icons-react";
 import { DetailModal } from "@/components/shared/DetailModal";
 import { CopyableField } from "@/components/shared/CopyableField";
 import { WhatsAppButton } from "@/components/leads/WhatsAppButton";
+import { ExclusaoControl } from "@/components/shared/ExclusaoControl";
 import { PipelineStageControl } from "@/components/leads/PipelineStageControl";
 import { FollowUpScheduler } from "@/components/leads/FollowUpScheduler";
 import { NoteComposer } from "@/components/leads/NoteComposer";
@@ -26,12 +27,12 @@ interface Props {
 export function LeadDetailModal({ lead, onClose }: Props) {
   return (
     <DetailModal record={lead} title={(l) => l.name} onClose={onClose}>
-      {(l) => <LeadDetailContent lead={l} />}
+      {(l) => <LeadDetailContent lead={l} onClose={onClose} />}
     </DetailModal>
   );
 }
 
-function LeadDetailContent({ lead }: { lead: Lead }) {
+function LeadDetailContent({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const { data: activities, isLoading: loadingActivities } = useActivities({ leadId: lead.id });
   const updateInfo = useUpdateLeadInfo();
@@ -123,6 +124,20 @@ function LeadDetailContent({ lead }: { lead: Lead }) {
       <NoteComposer owner={{ leadId: lead.id }} placeholder="Adicionar uma nota sobre este lead" />
 
       <ActivityTimeline activities={activities} loading={loadingActivities} />
+
+      <Divider my="xs" />
+
+      <ExclusaoControl
+        entidade="lead"
+        registroId={lead.id}
+        rotulo={lead.name}
+        cascata={
+          (activities?.length ?? 0) > 0
+            ? `Isto apaga também ${activities?.length} ${activities?.length === 1 ? "registro" : "registros"} de histórico deste lead.`
+            : undefined
+        }
+        onExcluido={onClose}
+      />
     </Stack>
   );
 }

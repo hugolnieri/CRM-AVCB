@@ -38,3 +38,12 @@ export type ClienteInput = Omit<Cliente, "id" | "createdAt" | "updatedAt">;
 export function nomeCliente(cliente: Cliente): string {
   return cliente.nomeFantasia?.trim() || cliente.razaoSocial;
 }
+
+/**
+ * Cinza para inativo, e não vermelho: inativar é arquivamento normal, não erro
+ * nem urgência. Vermelho aqui competiria com "vencido", que é o problema real.
+ */
+export const CLIENTE_STATUS_LABELS: Record<ClienteStatus, { label: string; color: string }> = {
+  ativo: { label: "Ativo", color: "green" },
+  inativo: { label: "Inativo", color: "gray" },
+};

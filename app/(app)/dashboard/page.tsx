@@ -6,6 +6,7 @@ import { Anchor, Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } fr
 import { useLeads } from "@/hooks/useLeads";
 import { useClientes } from "@/hooks/useClientes";
 import { useServicos, useTiposServico } from "@/hooks/useServicos";
+import { useSolicitacoesExclusao } from "@/hooks/useExclusoes";
 import { StatCard } from "@/components/shared/StatCard";
 import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
 import { FollowUpList } from "@/components/leads/FollowUpList";
@@ -22,6 +23,7 @@ export default function PainelPage() {
   const { data: clientes } = useClientes();
   const { data: servicos } = useServicos();
   const { data: tipos } = useTiposServico();
+  const { data: solicitacoes } = useSolicitacoesExclusao();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const painel = useMemo(
@@ -31,8 +33,9 @@ export default function PainelPage() {
         servicos: servicos ?? [],
         tipos: tipos ?? [],
         leads: leads ?? [],
+        solicitacoes: solicitacoes ?? [],
       }),
-    [clientes, servicos, tipos, leads],
+    [clientes, servicos, tipos, leads, solicitacoes],
   );
 
   const grupos = useMemo(
