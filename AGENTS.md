@@ -323,13 +323,30 @@ nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
 ## Prospecção a partir dos dados abertos da Receita
 
-`scripts/baixar-receita.mjs` traz o dump mensal do CNPJ
-(`arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/AAAA-MM/`);
-`scripts/importar-receita.mjs` filtra e produz um JSON; `Leads → Importar`
-revisa e grava. O download roda **da máquina de quem usa**, não de servidor: o
-portal recusa IP de datacenter, e daqui todo mês responde 404 mesmo em pasta que
-existe. Por isso o script descobre o mês andando para trás — a Receita publica
-com atraso variável, e chutar o mês corrente erraria na maioria dos dias.
+`scripts/baixar-receita.mjs` traz o dump mensal do CNPJ,
+`scripts/importar-receita.mjs` filtra e produz um JSON, e `Leads → Importar`
+revisa e grava.
+
+**O endereço não é o que a internet diz.** `dadosabertos.rfb.gov.br` está fora do
+ar e as URLs planas (`/dados/cnpj/dados_abertos_cnpj/AAAA-MM/`) devolvem 404 —
+inclusive as que o Google ainda tem indexadas. O que existe hoje é um
+compartilhamento Nextcloud servido por **WebDAV**, com o token como usuário e
+senha vazia:
+
+```
+https://arquivos.receitafederal.gov.br/public.php/dav/files/<token>/Dados/Cadastros/CNPJ/AAAA-MM/
+```
+
+O mês vem de um `PROPFIND` na pasta, não de um palpite: a Receita publica com
+atraso variável e o mês corrente costuma não existir ainda.
+
+Baixar funciona **de qualquer lugar, inclusive de servidor** — verificado. Uma
+versão anterior deste arquivo dizia que o portal recusava IP de datacenter; era
+inferência errada a partir do host antigo estar morto.
+
+Os 10 pedaços (`Estabelecimentos0..9`) são repartição arbitrária do cadastro, não
+recorte geográfico: cada um traz empresas do Brasil inteiro, então `--partes 0`
+já dá amostra representativa da região para testar.
 
 Três coisas que quebram este import e não são óbvias:
 

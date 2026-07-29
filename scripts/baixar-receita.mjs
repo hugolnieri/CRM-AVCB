@@ -2,15 +2,20 @@
  * Baixa e extrai os dados abertos do CNPJ da Receita Federal.
  *
  *     node scripts/baixar-receita.mjs
- *     node scripts/baixar-receita.mjs --dir ./receita --mes 2026-06
+ *     node scripts/baixar-receita.mjs --dir ./receita --mes 2026-07
+ *     node scripts/baixar-receita.mjs --partes 0,1        (so um pedaco, para testar)
  *
  * Depois: node scripts/importar-receita.mjs --dir ./receita --camadas vizinhas
  *
- * Rode da SUA maquina, nao de um servidor: o portal da Receita recusa conexao
- * de IP de datacenter (e o motivo de o passo ser manual ate agora). Sao ~5 GB
- * compactados e ~17 GB extraidos, e a Receita nao e rapida -- conte com horas.
- * O script e retomavel: arquivo ja baixado por inteiro e pulado, entao pode
- * interromper e rodar de novo.
+ * O portal virou um Nextcloud: `dadosabertos.rfb.gov.br` esta fora do ar e as
+ * URLs planas antigas (`/dados/cnpj/dados_abertos_cnpj/AAAA-MM/`) devolvem 404.
+ * O caminho vivo e o compartilhamento publico abaixo, servido por WebDAV, com o
+ * token como usuario e senha vazia. Funciona de qualquer lugar, inclusive de
+ * servidor -- foi verificado baixando Municipios.zip inteiro.
+ *
+ * Sao ~26 GB compactados no total; so Estabelecimentos + Empresas + Municipios,
+ * que e o que o importador usa, dao ~7 GB. Conte com uma hora larga.
+ * O script e retomavel: arquivo ja baixado por inteiro e pulado.
  *
  * `Socios*.zip` NAO entra na lista de proposito: traz nome e CPF de pessoas
  * fisicas. Dado de empresa e publico; dado de socio e dado pessoal, e nao tem
@@ -23,18 +28,18 @@ import { pipeline } from "node:stream/promises";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
-const BASE = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj";
+const TOKEN = "gn672Ad4CF8N6TK";
+const BASE = `https://arquivos.receitafederal.gov.br/public.php/dav/files/${TOKEN}/Dados/Cadastros/CNPJ`;
 
-// O navegador passa: sem User-Agent de gente o portal devolve 404.
 const CABECALHOS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-  Accept: "*/*",
+  // O token do compartilhamento publico vai como usuario, com senha vazia.
+  Authorization: `Basic ${Buffer.from(`${TOKEN}:`).toString("base64")}`,
+  "User-Agent": "CRM-SEICO/1.0 (prospeccao interna)",
 };
 
 function argumentos() {
   const args = process.argv.slice(2);
-  const opcoes = { dir: "./receita", mes: null };
+  const opcoes = { dir: "./receita", mes: null, partes: null };
   for (let i = 0; i < args.length; i += 2) {
     const chave = args[i]?.replace(/^--/, "");
     if (chave in opcoes) opcoes[chave] = args[i + 1];
@@ -42,10 +47,27 @@ function argumentos() {
   return opcoes;
 }
 
-/** Os arquivos que o importador usa. Nada alem disso. */
-function arquivosDoMes() {
+/** PROPFIND de profundidade 1: os nomes que existem sob `caminho`. */
+async function listar(caminho) {
+  const r = await fetch(`${BASE}/${caminho}`, {
+    method: "PROPFIND",
+    headers: { ...CABECALHOS, Depth: "1" },
+  });
+  if (!r.ok) throw new Error(`${r.status} ao listar ${caminho || "/"}`);
+  const xml = await r.text();
+  const nomes = [...xml.matchAll(/<d:href>([^<]*)<\/d:href>/g)]
+    .map((m) => decodeURIComponent(m[1]))
+    .map((href) => href.replace(/\/$/, "").split("/").pop());
+  return [...new Set(nomes)].filter(Boolean);
+}
+
+/**
+ * Os arquivos que o importador usa. `Socios`, `Simples`, `Naturezas` e o resto
+ * ficam de fora: nao entram na decisao de prospectar, e sao GB a toa.
+ */
+function arquivosDoMes(partes) {
   const lista = ["Municipios.zip"];
-  for (let i = 0; i <= 9; i++) lista.push(`Empresas${i}.zip`, `Estabelecimentos${i}.zip`);
+  for (const i of partes) lista.push(`Empresas${i}.zip`, `Estabelecimentos${i}.zip`);
   return lista;
 }
 
@@ -60,38 +82,22 @@ async function tamanhoRemoto(url) {
   }
 }
 
-/**
- * Acha a pasta do mes mais recente que existe, andando para tras.
- *
- * A Receita publica com atraso variavel, entao o mes corrente costuma nao
- * existir ainda -- chutar so o mes atual daria 404 na maioria dos dias.
- */
-async function descobrirMes() {
-  const hoje = new Date();
-  for (let atras = 0; atras < 12; atras++) {
-    const d = new Date(hoje.getFullYear(), hoje.getMonth() - atras, 1);
-    const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    process.stdout.write(`  procurando ${mes}... `);
-    const tamanho = await tamanhoRemoto(`${BASE}/${mes}/Municipios.zip`);
-    console.log(tamanho === null ? "nao" : "achei");
-    if (tamanho !== null) return mes;
-  }
-  return null;
-}
-
-function mb(bytes) {
-  return `${(bytes / 1024 / 1024).toFixed(0)} MB`;
+function gb(bytes) {
+  return bytes >= 1024 ** 3
+    ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
+    : `${(bytes / 1024 / 1024).toFixed(0)} MB`;
 }
 
 async function baixar(url, destino, esperado) {
-  // Retomavel pelo caminho mais simples que existe: se o arquivo local ja tem
-  // o tamanho anunciado, esta inteiro. Range/append daria um arquivo corrompido
-  // silencioso se o servidor ignorasse o cabecalho.
+  // Retomavel pelo caminho mais simples que existe: se o arquivo local ja tem o
+  // tamanho anunciado, esta inteiro. Range/append daria um arquivo corrompido
+  // em silencio se o servidor ignorasse o cabecalho.
   if (existsSync(destino) && esperado && statSync(destino).size === esperado) {
-    console.log(`  ${path.basename(destino)} ja baixado (${mb(esperado)})`);
+    console.log(`  ${path.basename(destino)} ja baixado (${gb(esperado)})`);
     return;
   }
 
+  process.stdout.write(`  ${path.basename(destino)} (${gb(esperado)})... `);
   const r = await fetch(url, { headers: CABECALHOS });
   if (!r.ok) throw new Error(`${r.status} ao baixar ${url}`);
 
@@ -103,53 +109,54 @@ async function baixar(url, destino, esperado) {
   // importador leria como "arquivo corrompido".
   await rm(destino, { force: true });
   await rename(parcial, destino);
-  console.log(`  ${path.basename(destino)} ok (${mb(statSync(destino).size)})`);
+  console.log("ok");
 }
 
 function extrair(zip, dir) {
-  // `tar` do bsdtar le zip e vem no Windows 10+, macOS e Linux -- evita
-  // dependencia so para descompactar.
-  execFileSync("tar", ["-xf", zip, "-C", dir], { stdio: "inherit" });
+  // bsdtar le zip e vem no Windows 10+, macOS e Linux. O `tar` do Git Bash e o
+  // GNU, que NAO le zip -- por isso o caminho absoluto no Windows.
+  const bsdtar =
+    process.platform === "win32" && existsSync("C:/Windows/System32/tar.exe")
+      ? "C:/Windows/System32/tar.exe"
+      : "tar";
+  execFileSync(bsdtar, ["-xf", zip, "-C", dir], { stdio: "inherit" });
 }
 
 async function main() {
-  const { dir, mes: mesPedido } = argumentos();
-  const destinoDir = path.resolve(dir);
+  const opcoes = argumentos();
+  const destinoDir = path.resolve(opcoes.dir);
   mkdirSync(destinoDir, { recursive: true });
 
-  let mes = mesPedido;
+  let mes = opcoes.mes;
   if (!mes) {
-    console.log("Procurando o mes mais recente publicado...");
-    mes = await descobrirMes();
-    if (!mes) {
-      console.error(
-        "\nNao achei nenhuma pasta publicada. Se voce esta atras de proxy ou VPN,\n" +
-          "desligue e tente de novo, ou abra no navegador e passe --mes AAAA-MM:\n" +
-          `  ${BASE}/`,
-      );
-      process.exit(1);
-    }
+    process.stdout.write("Procurando o mes mais recente... ");
+    const pastas = (await listar("")).filter((n) => /^\d{4}-\d{2}$/.test(n)).sort();
+    mes = pastas.at(-1);
+    if (!mes) throw new Error("nenhuma pasta AAAA-MM no compartilhamento");
+    console.log(mes);
   }
 
-  console.log(`\nMes: ${mes}`);
-  console.log(`Pasta: ${destinoDir}\n`);
+  // Os 10 pedacos sao uma reparticao arbitraria do cadastro, nao um recorte
+  // geografico: cada um traz empresas do Brasil inteiro. Para um teste rapido,
+  // --partes 0 ja da uma amostra representativa da regiao.
+  const partes = opcoes.partes
+    ? opcoes.partes.split(",").map((p) => p.trim())
+    : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-  const lista = arquivosDoMes();
-  let baixados = 0;
+  console.log(`Pasta:  ${destinoDir}`);
+  console.log(`Partes: ${partes.join(", ")}\n`);
 
-  for (const nome of lista) {
+  for (const nome of arquivosDoMes(partes)) {
     const url = `${BASE}/${mes}/${nome}`;
     const esperado = await tamanhoRemoto(url);
     if (esperado === null) {
-      // Alguns meses tem menos de 10 partes. Ausencia nao e erro.
       console.log(`  ${nome} nao existe neste mes, pulando`);
       continue;
     }
     await baixar(url, path.join(destinoDir, nome), esperado);
-    baixados++;
   }
 
-  console.log(`\nExtraindo ${baixados} arquivos...`);
+  console.log("\nExtraindo...");
   for (const zip of readdirSync(destinoDir).filter((f) => f.endsWith(".zip"))) {
     process.stdout.write(`  ${zip}... `);
     extrair(path.join(destinoDir, zip), destinoDir);
@@ -158,7 +165,7 @@ async function main() {
 
   console.log(
     `\nPronto. Agora:\n` +
-      `  node scripts/importar-receita.mjs --dir ${dir} --camadas vizinhas --limite 200\n`,
+      `  node scripts/importar-receita.mjs --dir ${opcoes.dir} --camadas vizinhas\n`,
   );
 }
 

@@ -5,26 +5,19 @@
  *     node scripts/importar-receita.mjs --dir ./receita --camadas vizinhas
  *     node scripts/importar-receita.mjs --dir ./receita --camadas vizinhas,sorocaba --cnaes 41,42,43,10
  *
- * Por que um script e não um download automático: o portal da Receita
- * (dadosabertos.rfb.gov.br) recusa conexão de IP de datacenter, e os arquivos
- * somam ~5 GB. Baixar é um passo manual, feito uma vez por mês no navegador.
- *
- * O que baixar em https://dadosabertos.rfb.gov.br/CNPJ/ (pasta do mês):
+ * Os arquivos vêm de `scripts/baixar-receita.mjs`, que já traz só o necessário:
  *
  *   Estabelecimentos0..9.zip   endereço, CNAE, situação, telefone
  *   Empresas0..9.zip           razão social, porte, capital social
  *   Municipios.zip             código TOM -> nome da cidade
  *
- * Descompacte tudo numa pasta só e aponte --dir para ela.
+ * `Socios*.zip` fica fora de propósito: traz nome e CPF de pessoas físicas.
+ * Dado de empresa é público; dado de sócio é dado pessoal, e não tem por que
+ * entrar num CRM de prospecção.
  *
- * NÃO baixe `Socios.zip`: ele traz nome e CPF de pessoas físicas. Dado de
- * empresa é público; dado de sócio é dado pessoal, e não tem por que entrar
- * num CRM de prospecção.
- *
- * AVISO: o layout abaixo segue o dicionário de dados publicado pela Receita,
- * mas não foi possível validá-lo contra o arquivo real a partir desta máquina.
- * O script confere a contagem de colunas e aborta com uma mensagem clara se a
- * estrutura não bater — rode primeiro com --limite 200 para conferir a saída.
+ * As posições abaixo foram conferidas contra o arquivo real de 2026-07
+ * (Estabelecimentos: 30 colunas; Empresas: 7). O script revalida a contagem a
+ * cada linha e aborta com mensagem clara se a Receita mudar o layout.
  */
 import { createReadStream, readdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
