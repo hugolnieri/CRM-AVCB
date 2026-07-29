@@ -128,6 +128,28 @@ Duas regras que não podem ser afrouxadas:
 Ao escrever policy nova: sempre `to authenticated`, e chame a função como
 `(select public.is_admin())` para ela ser avaliada uma vez por statement.
 
+### Criar acesso e redefinir senha
+
+`app/api/equipe/route.ts` é a **única** parte do projeto que toca a
+`SUPABASE_SERVICE_ROLE_KEY`, e ela ignora RLS por completo. Duas razões para a
+rota existir: `supabase.auth.signUp()` no navegador **troca a sessão corrente
+pela do usuário recém-criado** (o admin cadastraria alguém e sairia do próprio
+login), e criar conta para outra pessoa exige a API de admin do Supabase.
+
+A ordem das checagens é a segurança inteira: sessão → `is_admin()` perguntado ao
+banco com o token de quem chamou → só então a service role. Confiar num campo do
+corpo da requisição seria deixar o chamador declarar o próprio poder.
+
+A rota **não** define perfil. `handle_new_user` sempre cria como `colaborador`
+(a tabela nunca está vazia depois do primeiro), e promover continua sendo
+`set_member_role`, chamada pelo cliente. Aceitar `role` ali abriria um segundo
+caminho para promoção — e um caminho a mais é uma trava a menos.
+
+`email_confirm: true` na criação porque não há SMTP configurado no Supabase: sem
+isso a pessoa ficaria presa esperando um e-mail que nunca chega. A senha aparece
+uma vez só na interface, e o modal segura o admin até ele copiar — o Supabase
+guarda apenas o hash, então perdê-la significa redefinir outra.
+
 ### Exclusão de lead e cliente
 
 Apagar cliente cascateia serviços e notas — o histórico que comprova

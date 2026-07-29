@@ -33,7 +33,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
-import { useCurrentMember, useTeamMembers } from "@/hooks/useCurrentMember";
+import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { useCreateTipoServico, useServicos, useTiposServico, useUpdateTipoServico } from "@/hooks/useServicos";
 import {
   useConfiguracoes,
@@ -42,19 +42,17 @@ import {
   useUpdateConfiguracoes,
 } from "@/hooks/useJornada";
 import { useActivitiesRecentes } from "@/hooks/useActivities";
-import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { RequireAdmin } from "@/components/shared/RequireAdmin";
 import { MetasAdmin } from "@/components/metas/MetasAdmin";
 import { AuditoriaTab } from "@/components/admin/AuditoriaTab";
+import { EquipeTab } from "@/components/admin/EquipeTab";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
-import { setMemberRole } from "@/lib/supabase/queries/team";
 import { testarEnvio, type ResultadoEnvio } from "@/lib/supabase/queries/jornada";
 import { getErrorMessage } from "@/lib/errors";
 import { computeRelatorioDiario, totaisRelatorio, type LinhaRelatorio } from "@/lib/relatorioDiario";
 import { NOTIFICACAO_LABELS } from "@/types/jornada";
 import { CATEGORIA_LABELS, type CategoriaServico, type TipoServico } from "@/types/servico";
-import type { UserRole } from "@/types/team";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export default function AdminPage() {
@@ -299,73 +297,6 @@ function JornadaTab() {
         </Table>
       </Table.ScrollContainer>
       {(registros ?? []).length === 0 && <Text c="dimmed">Nenhuma jornada registrada ainda.</Text>}
-    </Stack>
-  );
-}
-
-// --- Equipe -----------------------------------------------------------------
-
-function EquipeTab() {
-  const { data: membros, isLoading } = useTeamMembers();
-  const { data: eu } = useCurrentMember();
-
-  const alterarPerfil = useCrudMutation({
-    mutationFn: ({ id, role }: { id: string; role: UserRole }) => setMemberRole(id, role),
-    invalidate: [["teamMembers"], ["currentMember"]],
-    successMessage: "Perfil de acesso atualizado.",
-    errorMessage: "Erro ao alterar o perfil.",
-  });
-
-  if (isLoading) return <Loader />;
-
-  return (
-    <Stack>
-      <Text size="sm" c="dimmed">
-        Administradores mantêm o catálogo, alteram perfis, veem os relatórios e são os únicos que
-        podem excluir registros. Colaboradores fazem todo o resto do dia a dia.
-      </Text>
-
-      <Table.ScrollContainer minWidth={600}>
-        <Table striped withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Nome</Table.Th>
-              <Table.Th>E-mail</Table.Th>
-              <Table.Th>Perfil</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {(membros ?? []).map((membro) => (
-              <Table.Tr key={membro.id}>
-                <Table.Td>{membro.fullName}</Table.Td>
-                <Table.Td>{membro.email}</Table.Td>
-                <Table.Td>
-                  <Select
-                    data={[
-                      { value: "admin", label: "Administrador" },
-                      { value: "colaborador", label: "Colaborador" },
-                    ]}
-                    value={membro.role}
-                    allowDeselect={false}
-                    // O banco também recusa (set_member_role levanta exceção),
-                    // mas desabilitar evita o erro previsível.
-                    disabled={membro.id === eu?.id || alterarPerfil.isPending}
-                    onChange={(value) =>
-                      value && alterarPerfil.mutate({ id: membro.id, role: value as UserRole })
-                    }
-                    w={180}
-                  />
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-
-      <Text size="xs" c="dimmed">
-        Você não pode alterar o próprio perfil — é o que impede o último administrador de trancar a
-        equipe do lado de fora.
-      </Text>
     </Stack>
   );
 }
