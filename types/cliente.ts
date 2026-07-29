@@ -11,6 +11,7 @@ export interface Cliente {
   nomeFantasia: string | null;
   cnpj: string | null;
   cnae: string | null;
+  cnaeDescricao: string | null;
   telefone: string | null;
   telefoneE164: string | null;
   email: string | null;

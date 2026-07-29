@@ -18,7 +18,8 @@ import { useForm } from "@mantine/form";
 import { IconSparkles } from "@tabler/icons-react";
 import { LEAD_ORIGENS } from "@/lib/pipeline/origens";
 import { normalizePhoneToE164 } from "@/lib/phone";
-import { formatarCnae, servicosParaCnae, validarCnae } from "@/lib/cnae";
+import { servicosParaCnae, validarCnae } from "@/lib/cnae";
+import { CnaeInput } from "@/components/shared/CnaeInput";
 import {
   exigirContato,
   exigirTexto,
@@ -64,6 +65,7 @@ export function LeadForm({
       contatoNome: lead?.contatoNome ?? "",
       cnpj: lead?.cnpj ?? "",
       cnae: lead?.cnae ?? "",
+      cnaeDescricao: lead?.cnaeDescricao ?? "",
       phoneRaw: lead?.phoneRaw ?? "",
       email: lead?.email ?? "",
       address: lead?.address ?? "",
@@ -114,6 +116,7 @@ export function LeadForm({
           contatoNome: nullIfBlank(values.contatoNome),
           cnpj: nullIfBlank(values.cnpj),
           cnae: nullIfBlank(values.cnae),
+          cnaeDescricao: nullIfBlank(values.cnaeDescricao),
           phoneRaw: nullIfBlank(values.phoneRaw),
           phoneE164: normalizePhoneToE164(values.phoneRaw),
           email: nullIfBlank(values.email),
@@ -159,19 +162,7 @@ export function LeadForm({
             />
           </Grid.Col>
 
-          <Grid.Col span={{ base: 12, sm: 5 }}>
-            <TextInput
-              label="CNAE"
-              placeholder="0000-0/00"
-              {...form.getInputProps("cnae")}
-              onBlur={(e) => {
-                form.getInputProps("cnae").onBlur?.(e);
-                const formatado = formatarCnae(e.currentTarget.value);
-                if (formatado !== e.currentTarget.value) form.setFieldValue("cnae", formatado);
-              }}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 7 }}>
+          <Grid.Col span={12}>
             <Select
               label="Origem"
               placeholder="Como chegou"
@@ -182,6 +173,16 @@ export function LeadForm({
             />
           </Grid.Col>
         </Grid>
+
+        <CnaeInput
+          codigo={form.values.cnae}
+          descricao={form.values.cnaeDescricao}
+          error={form.errors.cnae}
+          onChange={({ codigo, descricao }) => {
+            form.setFieldValue("cnae", codigo);
+            form.setFieldValue("cnaeDescricao", descricao);
+          }}
+        />
 
         {novosSugeridos.length > 0 && (
           <Alert color="blue" variant="light" icon={<IconSparkles size={18} />} p="sm">

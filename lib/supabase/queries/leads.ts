@@ -6,6 +6,7 @@ interface LeadRow {
   name: string;
   cnpj: string | null;
   cnae: string | null;
+  cnae_descricao: string | null;
   contato_nome: string | null;
   phone_raw: string | null;
   phone_e164: string | null;
@@ -32,6 +33,7 @@ function mapRowToLead(row: LeadRow): Lead {
     name: row.name,
     cnpj: row.cnpj,
     cnae: row.cnae,
+    cnaeDescricao: row.cnae_descricao,
     contatoNome: row.contato_nome,
     phoneRaw: row.phone_raw,
     phoneE164: row.phone_e164,
@@ -64,6 +66,7 @@ function mapPatchToRow(patch: Partial<LeadInput>): Record<string, unknown> {
   if ("name" in patch) row.name = patch.name;
   if ("cnpj" in patch) row.cnpj = patch.cnpj;
   if ("cnae" in patch) row.cnae = patch.cnae;
+  if ("cnaeDescricao" in patch) row.cnae_descricao = patch.cnaeDescricao;
   if ("contatoNome" in patch) row.contato_nome = patch.contatoNome;
   if ("phoneRaw" in patch) row.phone_raw = patch.phoneRaw;
   if ("phoneE164" in patch) row.phone_e164 = patch.phoneE164;

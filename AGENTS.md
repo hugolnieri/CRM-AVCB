@@ -97,6 +97,24 @@ botão. Preencher calado tiraria de quem cadastra a chance de discordar, e o
 campo passaria a significar "o que o sistema achou" em vez de "o que decidimos
 oferecer".
 
+`lib/cnaeCatalogo.ts` é **gerado** por `scripts/gerar-cnae-catalogo.mjs` a partir
+da API do IBGE: 87 divisões + 673 classes, ~51 KB. Não edite à mão; rode o
+script. É commitado e não buscado em tempo de execução porque a tabela CNAE muda
+de década em década, e uma tela de cadastro não pode depender de o IBGE estar no
+ar. Subclasses (1.332 itens, 3,6 MB) ficam de fora — o casamento é por prefixo,
+então uma subclasse informada cai naturalmente sob a classe dela.
+
+`CnaeInput` são **dois** campos, e é deliberado: quem está ao telefone sabe
+dizer "é uma construtora" e não o código; quem tem o cartão CNPJ na mão tem o
+código e não quer procurar numa lista de 760. Os dois se preenchem. O
+`filter={({options}) => options}` do `Autocomplete` desliga o filtro do Mantine
+porque `buscarCnae` já filtrou — deixá-lo ligado refiltraria por substring do
+rótulo e derrubaria os acertos por número.
+
+`cnae_descricao` é redundante com o código de propósito, pela mesma razão de
+`servicos.tipo_nome`: a tabela do IBGE é revisada, e o que foi cadastrado
+precisa continuar legível mesmo que o código mude de significado.
+
 **Lógica pura vai para `lib/*.ts` com teste** (`environment: "node"`, só lógica,
 sem componente). É o que mantém `vencimentos`, `painel`, `servicos`,
 `relatorioDiario`, `conversao` e `search` testáveis sem jsdom.

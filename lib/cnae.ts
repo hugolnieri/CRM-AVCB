@@ -1,4 +1,6 @@
 import type { TipoServico } from "@/types/servico";
+import { normalizeForSearch } from "@/lib/search";
+import { CNAE_CATALOGO, type EntradaCnae } from "@/lib/cnaeCatalogo";
 
 /**
  * CNAE — a atividade econômica da empresa, e o que permite o sistema sugerir
@@ -30,17 +32,25 @@ export function formatarCnae(valor: string): string {
 }
 
 /**
- * CNAE completo tem 7 dígitos. Não há dígito verificador padronizado que valha
- * a pena checar aqui — o que erra na prática é o comprimento.
+ * Aceita qualquer nível da hierarquia: 2 dígitos (divisão/segmento), 5 (classe)
+ * ou 7 (subclasse completa).
+ *
+ * Não exige os 7 de propósito. Quem cadastra costuma saber o ramo — "construção"
+ * — e não o código exato; recusar a divisão obrigaria a inventar dígitos, que é
+ * pior que guardar menos precisão. O casamento com o catálogo é por prefixo, e
+ * funciona igual nos três níveis.
  */
 export function cnaeValido(valor: string): boolean {
-  return apenasDigitosCnae(valor).length === 7;
+  const n = apenasDigitosCnae(valor).length;
+  return n >= 2 && n <= 7;
 }
 
 /** Mensagem de erro ou null, no contrato do `validate` do @mantine/form. */
 export function validarCnae(valor: string): string | null {
   if (valor.trim() === "") return null;
-  return cnaeValido(valor) ? null : "CNAE inválido. São 7 dígitos, como 4120-4/00.";
+  return cnaeValido(valor)
+    ? null
+    : "CNAE inválido. Use de 2 a 7 dígitos — a divisão (41) ou o código completo (4120-4/00).";
 }
 
 /**
@@ -102,4 +112,102 @@ function especificidade(cnaeDigitos: string, prefixos: string[] | null): number 
     .map(apenasDigitosCnae)
     .filter((p) => p !== "" && cnaeDigitos.startsWith(p))
     .reduce((maior, p) => Math.max(maior, p.length), 0);
+}
+
+// --- catálogo: escrever o ramo em vez do código --------------------------------
+
+/**
+ * O nome da atividade, quando o código cai numa entrada conhecida.
+ *
+ * Procura do mais específico para o mais genérico: classe (5 dígitos) antes de
+ * divisão (2). Um CNAE completo de 7 dígitos casa com a classe pelo prefixo,
+ * porque o dígito verificador fica na quinta posição — `4120400` começa com
+ * `41204`.
+ */
+export function descreverCnae(cnae: string): string | null {
+  const d = apenasDigitosCnae(cnae);
+  if (d.length < 2) return null;
+
+  const classe = CNAE_CATALOGO.find(([c]) => c.length === 5 && d.startsWith(c));
+  if (classe) return classe[1];
+
+  const divisao = CNAE_CATALOGO.find(([c]) => c.length === 2 && d.startsWith(c));
+  return divisao ? divisao[1] : null;
+}
+
+/**
+ * O segmento — a divisão do CNAE. É a granularidade em que as pessoas pensam o
+ * ramo de uma empresa ("construção", "metalurgia", "alimentos"), e a que serve
+ * para decidir o que oferecer.
+ */
+export function segmentoDoCnae(cnae: string): EntradaCnae | null {
+  const d = apenasDigitosCnae(cnae);
+  if (d.length < 2) return null;
+  return CNAE_CATALOGO.find(([c]) => c.length === 2 && d.startsWith(c)) ?? null;
+}
+
+export interface SugestaoCnae {
+  codigo: string;
+  descricao: string;
+  /** Divisão é o "segmento"; classe é o ramo específico dentro dele. */
+  nivel: "divisao" | "classe";
+  /** Nome da divisão a que a classe pertence — some quando já é a divisão. */
+  segmento: string | null;
+}
+
+/**
+ * Busca por código **ou** por nome da atividade, que é o ponto: quem cadastra
+ * quase nunca sabe o CNAE de cor, mas sabe dizer "padaria" ou "construção".
+ *
+ * Sem termo devolve as divisões, que funcionam como a lista de segmentos para
+ * folhear.
+ */
+export function buscarCnae(termo: string, limite = 12): SugestaoCnae[] {
+  const digitos = apenasDigitosCnae(termo);
+  const texto = normalizeForSearch(termo.trim());
+
+  if (termo.trim() === "") {
+    return CNAE_CATALOGO.filter(([c]) => c.length === 2)
+      .slice(0, limite)
+      .map(montar);
+  }
+
+  // Quem digitou número quer código; casa nos dois sentidos, para o CNAE
+  // completo de 7 dígitos encontrar a classe de 5 e vice-versa.
+  if (digitos.length >= 2 && texto.replace(/[^a-z]/g, "") === "") {
+    return CNAE_CATALOGO.filter(([c]) => c.startsWith(digitos) || digitos.startsWith(c))
+      .sort((a, b) => b[0].length - a[0].length)
+      .slice(0, limite)
+      .map(montar);
+  }
+
+  const casam = CNAE_CATALOGO.filter(([, descricao]) =>
+    normalizeForSearch(descricao).includes(texto),
+  );
+
+  // Quem casa no começo do nome primeiro: buscar "padaria" deve trazer
+  // "Padaria e Confeitaria" antes de "Comércio Varejista de Padaria".
+  return casam
+    .sort((a, b) => {
+      const comecaA = normalizeForSearch(a[1]).startsWith(texto) ? 0 : 1;
+      const comecaB = normalizeForSearch(b[1]).startsWith(texto) ? 0 : 1;
+      if (comecaA !== comecaB) return comecaA - comecaB;
+      return a[1].length - b[1].length;
+    })
+    .slice(0, limite)
+    .map(montar);
+}
+
+function montar([codigo, descricao]: EntradaCnae): SugestaoCnae {
+  const nivel = codigo.length === 2 ? ("divisao" as const) : ("classe" as const);
+  const divisao = nivel === "classe" ? segmentoDoCnae(codigo) : null;
+  return { codigo, descricao, nivel, segmento: divisao ? divisao[1] : null };
+}
+
+/** "41204" → "4120-4"; "4120400" → "4120-4/00"; divisão fica como está. */
+export function exibirCodigo(codigo: string): string {
+  const d = apenasDigitosCnae(codigo);
+  if (d.length === 7) return `${d.slice(0, 4)}-${d.slice(4, 5)}/${d.slice(5)}`;
+  if (d.length === 5) return `${d.slice(0, 4)}-${d.slice(4)}`;
+  return d;
 }

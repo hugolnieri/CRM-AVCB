@@ -17,10 +17,12 @@ export interface Lead {
   name: string;
   cnpj: string | null;
   /**
-   * Atividade economica (7 digitos). Alimenta a sugestao automatica de
-   * servicos -- ver lib/cnae.ts.
+   * Atividade econômica, só dígitos: 2 (divisão/segmento), 5 (classe) ou 7
+   * (subclasse). Alimenta a sugestão automática de serviços — ver lib/cnae.ts.
    */
   cnae: string | null;
+  /** Nome da atividade no momento do cadastro. Ver a migration 0013. */
+  cnaeDescricao: string | null;
   contatoNome: string | null;
   phoneRaw: string | null;
   phoneE164: string | null;
@@ -58,6 +60,7 @@ export type LeadInput = Pick<
   | "name"
   | "cnpj"
   | "cnae"
+  | "cnaeDescricao"
   | "contatoNome"
   | "phoneRaw"
   | "phoneE164"

@@ -15,6 +15,7 @@ export function leadToClienteDraft(lead: Lead): Partial<ClienteInput> & { razaoS
     nomeFantasia: null,
     cnpj: lead.cnpj,
     cnae: lead.cnae,
+    cnaeDescricao: lead.cnaeDescricao,
     telefone: lead.phoneRaw,
     telefoneE164: lead.phoneE164,
     email: lead.email,

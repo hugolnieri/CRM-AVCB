@@ -13,7 +13,8 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { normalizePhoneToE164 } from "@/lib/phone";
-import { formatarCnae, validarCnae } from "@/lib/cnae";
+import { validarCnae } from "@/lib/cnae";
+import { CnaeInput } from "@/components/shared/CnaeInput";
 import {
   exigirContato,
   exigirTexto,
@@ -61,6 +62,7 @@ export function ClienteForm({
       nomeFantasia: base?.nomeFantasia ?? "",
       cnpj: base?.cnpj ?? "",
       cnae: base?.cnae ?? "",
+      cnaeDescricao: base?.cnaeDescricao ?? "",
       contatoNome: base?.contatoNome ?? "",
       contatoCargo: base?.contatoCargo ?? "",
       telefone: base?.telefone ?? "",
@@ -95,6 +97,7 @@ export function ClienteForm({
           nomeFantasia: nullIfBlank(values.nomeFantasia),
           cnpj: nullIfBlank(values.cnpj),
           cnae: nullIfBlank(values.cnae),
+          cnaeDescricao: nullIfBlank(values.cnaeDescricao),
           contatoNome: nullIfBlank(values.contatoNome),
           contatoCargo: nullIfBlank(values.contatoCargo),
           telefone: nullIfBlank(values.telefone),
@@ -128,18 +131,6 @@ export function ClienteForm({
             />
           </Grid.Col>
 
-          <Grid.Col span={{ base: 12, sm: 5 }}>
-            <TextInput
-              label="CNAE"
-              placeholder="0000-0/00"
-              {...form.getInputProps("cnae")}
-              onBlur={(e) => {
-                form.getInputProps("cnae").onBlur?.(e);
-                const formatado = formatarCnae(e.currentTarget.value);
-                if (formatado !== e.currentTarget.value) form.setFieldValue("cnae", formatado);
-              }}
-            />
-          </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 7 }}>
             <TextInput
               label="Contato"
@@ -148,7 +139,6 @@ export function ClienteForm({
               {...form.getInputProps("contatoNome")}
             />
           </Grid.Col>
-
           <Grid.Col span={{ base: 12, sm: 5 }}>
             <TextInput label="Cargo do contato" {...form.getInputProps("contatoCargo")} />
           </Grid.Col>
@@ -163,6 +153,16 @@ export function ClienteForm({
             />
           </Grid.Col>
         </Grid>
+
+        <CnaeInput
+          codigo={form.values.cnae}
+          descricao={form.values.cnaeDescricao}
+          error={form.errors.cnae}
+          onChange={({ codigo, descricao }) => {
+            form.setFieldValue("cnae", codigo);
+            form.setFieldValue("cnaeDescricao", descricao);
+          }}
+        />
 
         <Grid gap="sm">
           <Grid.Col span={{ base: 12, sm: 6 }}>

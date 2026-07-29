@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   apenasDigitosCnae,
+  buscarCnae,
+  descreverCnae,
+  exibirCodigo,
+  segmentoDoCnae,
   cnaeCasaPrefixos,
   cnaeValido,
   formatarCnae,
@@ -32,9 +36,18 @@ describe("cnaeValido / validarCnae", () => {
     expect(validarCnae(CONSTRUCAO)).toBeNull();
   });
 
-  it("rejects the wrong length", () => {
-    expect(cnaeValido("41204")).toBe(false);
-    expect(validarCnae("41204")).not.toBeNull();
+  // Aceita os tres niveis: quem cadastra costuma saber o ramo, nao o codigo
+  // exato, e recusar a divisao obrigaria a inventar digitos.
+  it("accepts any level of the hierarchy", () => {
+    expect(cnaeValido("41")).toBe(true);
+    expect(cnaeValido("41204")).toBe(true);
+    expect(validarCnae("41")).toBeNull();
+  });
+
+  it("rejects what cannot be a CNAE at any level", () => {
+    expect(cnaeValido("4")).toBe(false);
+    expect(cnaeValido("41204001")).toBe(false);
+    expect(validarCnae("4")).not.toBeNull();
   });
 
   it("treats empty as fine — the field is optional", () => {
@@ -123,5 +136,83 @@ describe("servicosParaCnae", () => {
 describe("apenasDigitosCnae", () => {
   it("keeps only digits", () => {
     expect(apenasDigitosCnae("4120-4/00")).toBe("4120400");
+  });
+});
+
+describe("descreverCnae", () => {
+  it("names the activity from the code, most specific first", () => {
+    // 41204 e a classe "Construcao de Edificios"; 41 e a divisao homonima.
+    expect(descreverCnae("4120-4/00")).toBe("Construção de Edifícios");
+    expect(descreverCnae("41")).toBe("Construção de Edifícios");
+  });
+
+  it("falls back to the division when the class is unknown", () => {
+    // 4399 existe como classe; 43 e a divisao de servicos especializados.
+    expect(descreverCnae("43")).toContain("Serviços Especializados");
+  });
+
+  it("returns null for something too short to place", () => {
+    expect(descreverCnae("4")).toBeNull();
+    expect(descreverCnae("")).toBeNull();
+  });
+});
+
+describe("segmentoDoCnae", () => {
+  it("always resolves to the division, never the class", () => {
+    const s = segmentoDoCnae("4120-4/00");
+    expect(s?.[0]).toBe("41");
+  });
+
+  it("is null when there is no division to find", () => {
+    expect(segmentoDoCnae("9")).toBeNull();
+  });
+});
+
+describe("buscarCnae", () => {
+  // O ponto do recurso: ninguem sabe o CNAE de cor, mas sabe dizer o ramo.
+  it("finds activities by name", () => {
+    const r = buscarCnae("padaria");
+    expect(r.length).toBeGreaterThan(0);
+    expect(r.some((x) => x.descricao.toLowerCase().includes("padaria"))).toBe(true);
+  });
+
+  it("ignores accents and case", () => {
+    const comAcento = buscarCnae("construção");
+    const semAcento = buscarCnae("CONSTRUCAO");
+    expect(semAcento.map((x) => x.codigo)).toEqual(comAcento.map((x) => x.codigo));
+  });
+
+  it("finds by code, and a full CNAE reaches its class", () => {
+    expect(buscarCnae("41").some((x) => x.codigo === "41")).toBe(true);
+    expect(buscarCnae("4120400").some((x) => x.codigo === "41204")).toBe(true);
+  });
+
+  it("puts a name that starts with the term ahead of one that merely contains it", () => {
+    const r = buscarCnae("transporte");
+    expect(r[0].descricao.toLowerCase().startsWith("transporte")).toBe(true);
+  });
+
+  it("lists the divisions as browsable segments when nothing was typed", () => {
+    const r = buscarCnae("", 5);
+    expect(r).toHaveLength(5);
+    expect(r.every((x) => x.nivel === "divisao")).toBe(true);
+  });
+
+  it("tells which segment a class belongs to", () => {
+    const classe = buscarCnae("4120400")[0];
+    expect(classe.nivel).toBe("classe");
+    expect(classe.segmento).toBe("Construção de Edifícios");
+  });
+
+  it("respects the limit", () => {
+    expect(buscarCnae("de", 3)).toHaveLength(3);
+  });
+});
+
+describe("exibirCodigo", () => {
+  it("punctuates each level the way people read it", () => {
+    expect(exibirCodigo("4120400")).toBe("4120-4/00");
+    expect(exibirCodigo("41204")).toBe("4120-4");
+    expect(exibirCodigo("41")).toBe("41");
   });
 });
