@@ -20,6 +20,7 @@ depois de aplicar, atualizar à mão o `XRow` correspondente em
 | `0011_tarefas.sql` | sim | `tarefas` |
 | `0012_cidades.sql` | sim | cache de coordenadas para o mapa |
 | `0013_cnae.sql` | sim | CNAE em leads/clientes e prefixos em `tipos_servico` |
+| `0014_prospeccao.sql` | sim | base de prospecção da Receita, preenchida pelo robô mensal |
 
 Não há `0004`: o número foi consumido por uma migration de AVCB descartada no
 pivô, e renumerar o que já estava aplicado criaria divergência pior que o buraco.

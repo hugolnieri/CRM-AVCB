@@ -204,6 +204,19 @@ function montar([codigo, descricao]: EntradaCnae): SugestaoCnae {
   return { codigo, descricao, nivel, segmento: divisao ? divisao[1] : null };
 }
 
+/**
+ * Opções de segmento para um filtro, no nível da **divisão** (2 dígitos).
+ *
+ * Divisão e não classe porque 673 classes num seletor não é escolha, é
+ * garimpo — e como o casamento é por prefixo, escolher "41" pega toda a
+ * construção de edifícios abaixo dela.
+ */
+export function segmentosDisponiveis(): { value: string; label: string }[] {
+  return CNAE_CATALOGO.filter(([codigo]) => codigo.length === 2)
+    .map(([codigo, descricao]) => ({ value: codigo, label: `${codigo} — ${descricao}` }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
+
 /** "41204" → "4120-4"; "4120400" → "4120-4/00"; divisão fica como está. */
 export function exibirCodigo(codigo: string): string {
   const d = apenasDigitosCnae(codigo);

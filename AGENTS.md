@@ -323,9 +323,15 @@ nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
 ## Prospecção a partir dos dados abertos da Receita
 
-`scripts/baixar-receita.mjs` traz o dump mensal do CNPJ,
-`scripts/importar-receita.mjs` filtra e produz um JSON, e `Leads → Importar`
-revisa e grava.
+`scripts/prospectar.mjs` roda todo mês pelo GitHub Actions
+(`.github/workflows/prospeccao.yml`), levanta as empresas da região e grava em
+`public.prospeccao`. `Leads → Importar` recorta e decide. **Ninguém baixa nada.**
+
+**Prospecção não é lead, e a separação é o ponto.** `prospeccao` é o material
+bruto; `leads` é o funil. Despejar 3.000 empresas em `leads` faria toda métrica
+de conversão mentir, porque contaria como trabalho comercial gente que ninguém
+olhou. A tabela não tem DELETE de propósito: `descartada_em` preenchido é o que
+impede a coleta do mês seguinte de ressuscitar quem já foi recusado.
 
 **O endereço não é o que a internet diz.** `dadosabertos.rfb.gov.br` está fora do
 ar e as URLs planas (`/dados/cnpj/dados_abertos_cnpj/AAAA-MM/`) devolvem 404 —
@@ -338,38 +344,74 @@ https://arquivos.receitafederal.gov.br/public.php/dav/files/<token>/Dados/Cadast
 ```
 
 O mês vem de um `PROPFIND` na pasta, não de um palpite: a Receita publica com
-atraso variável e o mês corrente costuma não existir ainda.
+atraso variável e o mês corrente costuma não existir ainda. Baixar funciona **de
+qualquer lugar, inclusive de servidor** — verificado. Uma versão anterior deste
+arquivo dizia que o portal recusava IP de datacenter; era inferência errada a
+partir do host antigo estar morto, e ela fechava a porta para automatizar isso.
 
-Baixar funciona **de qualquer lugar, inclusive de servidor** — verificado. Uma
-versão anterior deste arquivo dizia que o portal recusava IP de datacenter; era
-inferência errada a partir do host antigo estar morto.
+**Nada toca o disco.** São ~27 GB e nenhum runner de CI tem espaço para eles.
+Cada zip da Receita tem **uma** entrada deflate, então o script tira o local file
+header em `Transform` e infla a própria resposta HTTP — sem biblioteca de zip, que
+imporia o arquivo em disco.
+
+Cinco coisas que quebram este import, nenhuma óbvia, e as duas últimas só
+apareceram contra o arquivo real:
+
+1. Os CSVs são **latin1**. `fluxo.setEncoding("latin1")` é obrigatório: sem ele o
+   readline decodifica como UTF-8 e todo "SÃO" vira "S?O" em silêncio, porque os
+   bytes são válidos e só o resultado está errado.
+2. A Receita usa a tabela **TOM** de municípios, **não** o código do IBGE
+   (Cerquilho é `6331` lá e `3512001` no IBGE). O casamento é por nome
+   normalizado, via o arquivo `Municipios`.
+3. `Socios*.zip` traz nome e CPF de pessoas físicas. **Não tocar** — dado de
+   empresa é público, dado de sócio é dado pessoal.
+4. **`split(";")` não serve.** Os campos são citados e alguns contêm ponto e
+   vírgula de verdade; o split ingênuo produz 31 colunas e derruba a conferência
+   de layout.
+5. **Um registro não é uma linha.** Alguns campos citados contêm quebra de linha,
+   então a leitura acumula até as aspas fecharem.
+
+Registro sujo se pula; layout trocado aborta. A diferença é a proporção — o teto
+de 0,1% é o que separa um endereço maldigitado em 2003 de uma coluna nova da
+Receita.
 
 Os 10 pedaços (`Estabelecimentos0..9`) são repartição arbitrária do cadastro, não
 recorte geográfico: cada um traz empresas do Brasil inteiro, então `--partes 0`
-já dá amostra representativa da região para testar.
+já dá amostra representativa para testar. `Estabelecimentos` e `Empresas` **não**
+são particionados igual, então o join é em duas passadas: primeiro os
+estabelecimentos da região, depois as razões sociais dos CNPJs básicos achados.
 
-Três coisas que quebram este import e não são óbvias:
+O filtro de CNAE é o mesmo `tipos_servico.cnaes` do catálogo: a configuração que
+gera as sugestões é a query de prospecção. Catálogo sem CNAE **aborta a coleta**,
+em vez de trazer o comércio inteiro da região.
 
-1. Os CSVs são **latin1**, não UTF-8. Lidos como UTF-8, todo "SÃO" vira "S?O" em
-   silêncio.
-2. A Receita usa a tabela **TOM** de municípios, **não** o código do IBGE. Por
-   isso o casamento é por nome normalizado, via o arquivo `Municipios`.
-3. `Socios.zip` traz nome e CPF de pessoas físicas. **Não importar** — dado de
-   empresa é público, dado de sócio é dado pessoal.
+**Os filtros vivem na tela, não no script.** Cidade, segmento, qualificação e
+quantidade são decisão de quem vai ligar na segunda-feira, e não de um arquivo de
+configuração escrito um mês antes. O robô traz a região; a tela recorta.
 
-O filtro de CNAE do script é o mesmo `tipos_servico.cnaes` do catálogo: a
-configuração que gera as sugestões é a query de prospecção. Se o catálogo não
-tem CNAE configurado, a importação entrega nomes e não entrega o que vender — a
-tela avisa quando isso acontece.
-
-`lib/importacao.ts` decide o que entra, e descartado **não some da lista**:
-aparece com o motivo. Sumir com 300 de 1.200 linhas deixaria quem importa sem
-saber se o filtro funcionou ou se o arquivo estava errado. Nada vem pré-marcado,
-pela mesma razão de a tela existir.
+`lib/qualificacao.ts` pontua com o que existe — o dump **não traz número de
+funcionários**, que seria o sinal direto. Sobram proxies: quantos serviços do
+catálogo se aplicam ao ramo (o único que fala do nosso negócio), porte, capital,
+matriz, idade e ter os dois meios de contato. O score **sempre** vem com os
+motivos: um número opaco de 0 a 10 não deixa ninguém discordar dele, e quem
+conhece a região precisa poder corrigir o sistema em vez de obedecer a ele.
 
 `lib/regiao.ts` tem as cidades em camadas a partir de Cerquilho. Não usa a
 "região imediata" do IBGE direto porque ela agrupa por polo econômico e a de
 Sorocaba **exclui Tatuí e Laranjal Paulista**, que fazem divisa com a sede.
+`scripts/regiao.mjs` duplica as listas porque os scripts rodam fora do bundler e
+não importam TypeScript — e `lib/regiao.test.ts` compara as duas, para a
+duplicação não divergir em silêncio.
+
+### A conta do robô
+
+O workflow **não usa a service role**, e o motivo é o repositório ser público. A
+conta do robô é um usuário comum: a RLS vale para ela como para qualquer
+colaborador, então um segredo vazado custa o acesso de um colaborador, não o de
+quem ignora RLS por completo.
+
+Os gatilhos são só `schedule` e `workflow_dispatch`. **Não existe
+`pull_request`** — é assim que um PR vindo de fork conseguiria ler os segredos.
 
 ## Mapa por cidade
 
