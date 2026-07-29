@@ -6,6 +6,7 @@ interface ClienteRow {
   razao_social: string;
   nome_fantasia: string | null;
   cnpj: string | null;
+  cnae: string | null;
   telefone: string | null;
   telefone_e164: string | null;
   email: string | null;
@@ -30,6 +31,7 @@ function mapRowToCliente(row: ClienteRow): Cliente {
     razaoSocial: row.razao_social,
     nomeFantasia: row.nome_fantasia,
     cnpj: row.cnpj,
+    cnae: row.cnae,
     telefone: row.telefone,
     telefoneE164: row.telefone_e164,
     email: row.email,
@@ -54,6 +56,7 @@ function mapPatchToRow(patch: Partial<ClienteInput>): Record<string, unknown> {
   if ("razaoSocial" in patch) row.razao_social = patch.razaoSocial;
   if ("nomeFantasia" in patch) row.nome_fantasia = patch.nomeFantasia;
   if ("cnpj" in patch) row.cnpj = patch.cnpj;
+  if ("cnae" in patch) row.cnae = patch.cnae;
   if ("telefone" in patch) row.telefone = patch.telefone;
   if ("telefoneE164" in patch) row.telefone_e164 = patch.telefoneE164;
   if ("email" in patch) row.email = patch.email;

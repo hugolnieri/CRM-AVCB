@@ -14,6 +14,7 @@ import {
   Stack,
   Switch,
   Table,
+  TagsInput,
   Tabs,
   Text,
   TextInput,
@@ -53,6 +54,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { computeRelatorioDiario, totaisRelatorio, type LinhaRelatorio } from "@/lib/relatorioDiario";
 import { NOTIFICACAO_LABELS } from "@/types/jornada";
 import { CATEGORIA_LABELS, type CategoriaServico, type TipoServico } from "@/types/servico";
+import { normalizarPrefixos, validarPrefixoCnae } from "@/lib/cnae";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export default function AdminPage() {
@@ -542,6 +544,7 @@ function TiposTab() {
               <Table.Th>Natureza</Table.Th>
               <Table.Th>Validade</Table.Th>
               <Table.Th>Carga</Table.Th>
+              <Table.Th>CNAEs</Table.Th>
               <Table.Th>Situação</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -553,6 +556,21 @@ function TiposTab() {
                 <Table.Td>{CATEGORIA_LABELS[tipo.categoria]}</Table.Td>
                 <Table.Td>{tipo.validadeMeses ? `${tipo.validadeMeses} meses` : "Não vence"}</Table.Td>
                 <Table.Td>{tipo.cargaHoraria ? `${tipo.cargaHoraria}h` : "—"}</Table.Td>
+                <Table.Td>
+                  {tipo.cnaes && tipo.cnaes.length > 0 ? (
+                    <Group gap={4}>
+                      {tipo.cnaes.map((c) => (
+                        <Badge key={c} variant="light" size="sm" color="blue">
+                          {c}
+                        </Badge>
+                      ))}
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      —
+                    </Text>
+                  )}
+                </Table.Td>
                 <Table.Td>
                   <Text size="sm" c={tipo.ativo ? undefined : "dimmed"}>
                     {tipo.ativo ? "Ativo" : "Inativo"}
@@ -613,6 +631,7 @@ function TipoForm({
       categoria: tipo?.categoria ?? ("treinamento" as CategoriaServico),
       validadeMeses: tipo?.validadeMeses ?? ("" as number | ""),
       cargaHoraria: tipo?.cargaHoraria ?? ("" as number | ""),
+      cnaes: tipo?.cnaes ?? ([] as string[]),
       ativo: tipo?.ativo ?? true,
       ordem: tipo?.ordem ?? 0,
     },
@@ -630,6 +649,11 @@ function TipoForm({
           categoria: values.categoria,
           validadeMeses: values.validadeMeses === "" ? null : Number(values.validadeMeses),
           cargaHoraria: values.cargaHoraria === "" ? null : Number(values.cargaHoraria),
+          // Normaliza aqui e nao no banco: prefixo com pontuacao nunca casaria
+          // com o CNAE do lead, que tambem e comparado so por digitos.
+          cnaes: normalizarPrefixos(values.cnaes).length > 0
+            ? normalizarPrefixos(values.cnaes)
+            : null,
           ativo: values.ativo,
           ordem: Number(values.ordem),
         }),
@@ -658,6 +682,28 @@ function TipoForm({
           description="Menor aparece primeiro"
           {...form.getInputProps("ordem")}
         />
+
+        <TagsInput
+          label="CNAEs em que se aplica"
+          placeholder="Digite e pressione Enter: 41, 4120, 4120-4/00…"
+          description="Quando um lead tiver CNAE dentro destes, o sistema sugere este serviço sozinho"
+          clearable
+          // Regra de entrada, não de exibição: prefixo inválido nunca casaria
+          // com nada e viraria uma configuração que parece feita e não funciona.
+          onKeyDown={(e) => {
+            const valor = e.currentTarget.value;
+            if (e.key === "Enter" && valor.trim() !== "" && validarPrefixoCnae(valor) !== null) {
+              e.preventDefault();
+            }
+          }}
+          {...form.getInputProps("cnaes")}
+        />
+        <Text size="xs" c="dimmed" mt={-8}>
+          O CNAE é hierárquico, então basta o começo: <strong>41</strong> cobre toda a construção
+          de edifícios, <strong>4120</strong> só aquela classe. Sem nenhum, o serviço nunca é
+          sugerido automaticamente — o que é o certo para quem atende qualquer ramo.
+        </Text>
+
         <Switch
           label="Ativo"
           description="Tipos inativos não aparecem ao registrar um serviço novo"

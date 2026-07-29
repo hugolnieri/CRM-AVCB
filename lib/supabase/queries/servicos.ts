@@ -128,6 +128,7 @@ interface TipoServicoRow {
   sigla: string | null;
   categoria: CategoriaServico;
   validade_meses: number | null;
+  cnaes: string[] | null;
   carga_horaria: number | null;
   ativo: boolean;
   ordem: number;
@@ -141,6 +142,7 @@ function mapRowToTipo(row: TipoServicoRow): TipoServico {
     sigla: row.sigla,
     categoria: row.categoria,
     validadeMeses: row.validade_meses,
+    cnaes: row.cnaes,
     cargaHoraria: row.carga_horaria,
     ativo: row.ativo,
     ordem: row.ordem,
@@ -168,6 +170,7 @@ function mapTipoPatchToRow(patch: Partial<TipoServicoInput>): Record<string, unk
   if ("sigla" in patch) row.sigla = patch.sigla;
   if ("categoria" in patch) row.categoria = patch.categoria;
   if ("validadeMeses" in patch) row.validade_meses = patch.validadeMeses;
+  if ("cnaes" in patch) row.cnaes = patch.cnaes;
   if ("cargaHoraria" in patch) row.carga_horaria = patch.cargaHoraria;
   if ("ativo" in patch) row.ativo = patch.ativo;
   if ("ordem" in patch) row.ordem = patch.ordem;

@@ -18,6 +18,11 @@ export interface TipoServico {
    * É o que permite sugerir a data de vencimento automaticamente.
    */
   validadeMeses: number | null;
+  /**
+   * Prefixos de CNAE em que este servico se aplica, so digitos. Casamento por
+   * prefixo: "41" cobre toda a divisao. Null/vazio = nunca sugerido sozinho.
+   */
+  cnaes: string[] | null;
   cargaHoraria: number | null;
   ativo: boolean;
   ordem: number;

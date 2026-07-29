@@ -2,23 +2,25 @@
 
 import {
   Button,
+  Grid,
   Group,
   MultiSelect,
   Select,
-  SimpleGrid,
   Stack,
+  Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { normalizePhoneToE164 } from "@/lib/phone";
+import { formatarCnae, validarCnae } from "@/lib/cnae";
 import {
   exigirContato,
   exigirTexto,
   validarCnpj,
   validarEmail,
   validarTelefone,
-  validarUf,
+  UF_OPCOES,
 } from "@/lib/validacao";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
 import type { Cliente, ClienteInput } from "@/types/cliente";
@@ -58,6 +60,7 @@ export function ClienteForm({
       razaoSocial: base?.razaoSocial ?? "",
       nomeFantasia: base?.nomeFantasia ?? "",
       cnpj: base?.cnpj ?? "",
+      cnae: base?.cnae ?? "",
       contatoNome: base?.contatoNome ?? "",
       contatoCargo: base?.contatoCargo ?? "",
       telefone: base?.telefone ?? "",
@@ -77,7 +80,7 @@ export function ClienteForm({
       razaoSocial: (value) => exigirTexto(value, "Informe a razão social."),
       contatoNome: (value) => exigirTexto(value, "Informe quem é o contato na empresa."),
       cnpj: validarCnpj,
-      uf: validarUf,
+      cnae: validarCnae,
       telefone: (value, values) => exigirContato(value, values.email) ?? validarTelefone(value),
       email: (value, values) => exigirContato(values.telefone, value) ?? validarEmail(value),
       responsavelId: (value) => (value ? null : "Escolha um responsável."),
@@ -91,6 +94,7 @@ export function ClienteForm({
           razaoSocial: values.razaoSocial.trim(),
           nomeFantasia: nullIfBlank(values.nomeFantasia),
           cnpj: nullIfBlank(values.cnpj),
+          cnae: nullIfBlank(values.cnae),
           contatoNome: nullIfBlank(values.contatoNome),
           contatoCargo: nullIfBlank(values.contatoCargo),
           telefone: nullIfBlank(values.telefone),
@@ -112,45 +116,94 @@ export function ClienteForm({
       <Stack>
         <TextInput label="Razão social" withAsterisk {...form.getInputProps("razaoSocial")} />
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput label="Nome fantasia" {...form.getInputProps("nomeFantasia")} />
-          <TextInput label="CNPJ" placeholder="00.000.000/0000-00" {...form.getInputProps("cnpj")} />
-          <TextInput
-            label="Contato"
-            placeholder="Nome de quem atende"
-            withAsterisk
-            {...form.getInputProps("contatoNome")}
-          />
-          <TextInput label="Cargo do contato" {...form.getInputProps("contatoCargo")} />
-          <TextInput
-            label="Telefone"
-            placeholder="(15) 99999-8888"
-            description="Telefone ou e-mail — ao menos um"
-            {...form.getInputProps("telefone")}
-          />
-          <TextInput
-            label="E-mail"
-            description="Telefone ou e-mail — ao menos um"
-            {...form.getInputProps("email")}
-          />
-        </SimpleGrid>
+        <Grid gap="sm">
+          <Grid.Col span={{ base: 12, sm: 7 }}>
+            <TextInput label="Nome fantasia" {...form.getInputProps("nomeFantasia")} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 5 }}>
+            <TextInput
+              label="CNPJ"
+              placeholder="00.000.000/0000-00"
+              {...form.getInputProps("cnpj")}
+            />
+          </Grid.Col>
 
-        <TextInput label="Endereço" placeholder="Rua, número, bairro" {...form.getInputProps("endereco")} />
+          <Grid.Col span={{ base: 12, sm: 5 }}>
+            <TextInput
+              label="CNAE"
+              placeholder="0000-0/00"
+              {...form.getInputProps("cnae")}
+              onBlur={(e) => {
+                form.getInputProps("cnae").onBlur?.(e);
+                const formatado = formatarCnae(e.currentTarget.value);
+                if (formatado !== e.currentTarget.value) form.setFieldValue("cnae", formatado);
+              }}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 7 }}>
+            <TextInput
+              label="Contato"
+              placeholder="Nome de quem atende"
+              withAsterisk
+              {...form.getInputProps("contatoNome")}
+            />
+          </Grid.Col>
 
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <TextInput label="Cidade" {...form.getInputProps("cidade")} />
-          <TextInput label="UF" maxLength={2} {...form.getInputProps("uf")} />
-          <TextInput label="CEP" {...form.getInputProps("cep")} />
-        </SimpleGrid>
+          <Grid.Col span={{ base: 12, sm: 5 }}>
+            <TextInput label="Cargo do contato" {...form.getInputProps("contatoCargo")} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 7 }}>
+            <Select
+              label="Responsável"
+              placeholder="Quem cuida desta conta"
+              searchable
+              withAsterisk
+              data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
+              {...form.getInputProps("responsavelId")}
+            />
+          </Grid.Col>
+        </Grid>
 
-        <Select
-          label="Responsável"
-          placeholder="Quem cuida desta conta"
-          searchable
-          withAsterisk
-          data={membros.map((m) => ({ value: m.id, label: m.fullName }))}
-          {...form.getInputProps("responsavelId")}
+        <Grid gap="sm">
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <TextInput
+              label="Telefone"
+              placeholder="(15) 99999-8888"
+              {...form.getInputProps("telefone")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <TextInput label="E-mail" {...form.getInputProps("email")} />
+          </Grid.Col>
+        </Grid>
+        <Text size="xs" c="dimmed" mt={-8}>
+          Informe ao menos um dos dois: é por onde a equipe fala com a empresa.
+        </Text>
+
+        <TextInput
+          label="Endereço"
+          placeholder="Rua, número, bairro"
+          {...form.getInputProps("endereco")}
         />
+
+        <Grid gap="sm">
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <TextInput label="Cidade" placeholder="Sorocaba" {...form.getInputProps("cidade")} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 6, sm: 3 }}>
+            <Select
+              label="UF"
+              placeholder="SP"
+              data={UF_OPCOES}
+              searchable
+              clearable
+              {...form.getInputProps("uf")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 6, sm: 3 }}>
+            <TextInput label="CEP" placeholder="18000-000" {...form.getInputProps("cep")} />
+          </Grid.Col>
+        </Grid>
 
         <MultiSelect
           label="Possíveis serviços"

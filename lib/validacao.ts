@@ -52,12 +52,21 @@ export function validarCnpj(valor: string): string | null {
   return valor.trim() === "" || cnpjValido(valor) ? null : "CNPJ inválido. Confira os dígitos.";
 }
 
-/** UF opcional; se digitada, precisa ser uma das 27. */
-const UFS = new Set([
+/**
+ * As 27 unidades da federação, na ordem em que aparecem no Select.
+ *
+ * Virou lista escolhível em vez de campo livre pelo motivo prático: o mapa do
+ * pipeline agrupa por cidade **e** UF (`chaveCidade`), então "SP" e "sp"
+ * digitados por pessoas diferentes partiam a mesma cidade em duas bolhas.
+ */
+export const UF_OPCOES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
-]);
+];
 
+const UFS = new Set(UF_OPCOES);
+
+/** UF opcional; se preenchida, precisa ser uma das 27. */
 export function validarUf(valor: string): string | null {
   const uf = valor.trim().toUpperCase();
   return uf === "" || UFS.has(uf) ? null : "UF inválida.";

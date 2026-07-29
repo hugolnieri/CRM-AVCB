@@ -16,6 +16,11 @@ export interface Lead {
   /** Nome da empresa (ou do contato, quando ainda não se sabe a razão social). */
   name: string;
   cnpj: string | null;
+  /**
+   * Atividade economica (7 digitos). Alimenta a sugestao automatica de
+   * servicos -- ver lib/cnae.ts.
+   */
+  cnae: string | null;
   contatoNome: string | null;
   phoneRaw: string | null;
   phoneE164: string | null;
@@ -52,6 +57,7 @@ export type LeadInput = Pick<
   Lead,
   | "name"
   | "cnpj"
+  | "cnae"
   | "contatoNome"
   | "phoneRaw"
   | "phoneE164"

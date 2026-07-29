@@ -72,6 +72,31 @@ Responsável é obrigatório e já nasce preenchido com quem está cadastrando: 
 métrica `leads_novos` de `lib/metas.ts` conta por `assignedUserId`, então lead
 sem dono não contava para ninguém.
 
+Cada linha do formulário é um `Grid` de 12 colunas, **não** `SimpleGrid`: campo
+estreito ao lado de largo (UF ao lado de Cidade) precisa de proporção, e uma
+`description` sob um campo só empurra o input vizinho para baixo num grid de
+colunas iguais — foi o que deixou o cadastro torto. Regra que vale para os dois
+campos (telefone/e-mail) vira **uma** linha de `Text` sob o par, nunca a mesma
+frase repetida em cada um.
+
+## CNAE e a sugestão automática de serviços
+
+O CNAE é hierárquico (`41` divisão → `4120` classe → `4120-4/00` subclasse), e é
+isso que faz a coisa funcionar: `tipos_servico.cnaes` guarda **prefixos**, não
+códigos completos, então configurar `41` no NR-35 cobre a construção inteira sem
+cadastrar centenas de subclasses. `servicosParaCnae` (`lib/cnae.ts`, com teste)
+casa por prefixo e ordena do mais específico para o mais genérico — regra escrita
+para a subclasse exata é mais deliberada que uma que pegou a divisão.
+
+Tipo sem `cnaes` **nunca** é sugerido, e esse é o padrão certo: sugestão errada
+custa mais caro que sugestão ausente. A comparação é sempre só por dígitos dos
+dois lados, então pontuação no cadastro não quebra o casamento.
+
+A sugestão **não** preenche `possiveisServicos` sozinha — ela aparece com um
+botão. Preencher calado tiraria de quem cadastra a chance de discordar, e o
+campo passaria a significar "o que o sistema achou" em vez de "o que decidimos
+oferecer".
+
 **Lógica pura vai para `lib/*.ts` com teste** (`environment: "node"`, só lógica,
 sem componente). É o que mantém `vencimentos`, `painel`, `servicos`,
 `relatorioDiario`, `conversao` e `search` testáveis sem jsdom.
