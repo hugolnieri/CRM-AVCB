@@ -361,9 +361,16 @@ nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
 ## Prospecção a partir dos dados abertos da Receita
 
-`scripts/prospectar.mjs` roda todo mês pelo GitHub Actions
+`scripts/prospectar.mjs` roda pelo GitHub Actions
 (`.github/workflows/prospeccao.yml`), levanta as empresas da região e grava em
 `public.prospeccao`. `Leads → Importar` recorta e decide. **Ninguém baixa nada.**
+
+**É sob demanda, não agendado.** Havia um `schedule` mensal; saiu. Uma rodada
+completa são ~27 GB transmitidos e horas de execução, e a Receita republica o
+cadastro uma vez por mês — coletar sem ninguém esperando o resultado gasta cota
+do Actions para encher uma tela que só vai ser aberta semanas depois. Quem vai
+prospectar dispara antes de começar. O `--partes 0` existe para isso: baixa 1 dos
+10 pedaços (~2,7 GB) e já entrega amostra representativa.
 
 **Prospecção não é lead, e a separação é o ponto.** `prospeccao` é o material
 bruto; `leads` é o funil. Despejar 3.000 empresas em `leads` faria toda métrica

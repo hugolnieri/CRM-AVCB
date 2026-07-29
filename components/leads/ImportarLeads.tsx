@@ -263,8 +263,8 @@ export function ImportarLeads({ opened, onClose }: { opened: boolean; onClose: (
         {baseVazia && (
           <Alert color="blue" variant="light" icon={<IconAlertTriangle size={18} />}>
             {semFiltro
-              ? "A base de prospecção está vazia. Ela é preenchida automaticamente todo mês; " +
-                "para rodar agora, dispare o fluxo “Prospeccao mensal” no GitHub."
+              ? "A base de prospecção está vazia. Ela é preenchida sob demanda: dispare o fluxo " +
+                "“Prospeccao” em Actions, no GitHub, e volte aqui quando terminar."
               : "Nenhuma empresa com esses filtros. Tente abrir o recorte."}
           </Alert>
         )}

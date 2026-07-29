@@ -1,6 +1,6 @@
 /**
  * Levanta as empresas da regiao a partir do dump do CNPJ e grava em
- * `public.prospeccao`. E o que o GitHub Actions roda todo mes.
+ * `public.prospeccao`. E o que o GitHub Actions roda quando alguem pede.
  *
  *     node scripts/prospectar.mjs --camadas vizinhas
  *     node scripts/prospectar.mjs --camadas vizinhas,sorocaba --partes 0
