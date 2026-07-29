@@ -28,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
 import { AvisosBell } from "@/components/shared/AvisosBell";
@@ -70,6 +71,7 @@ const NAV_GROUPS: {
 export function AppShellNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure(false);
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", { getInitialValueInEffect: true });
@@ -83,6 +85,10 @@ export function AppShellNav({ children }: { children: React.ReactNode }) {
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // Descarta o que ficou em memória antes de navegar. O AuthListener também
+    // limpa ao receber SIGNED_OUT, mas aqui é síncrono: sem isto o menu de
+    // Administração continua desenhado durante a transição para o login.
+    queryClient.clear();
     router.push("/login");
     router.refresh();
   }

@@ -16,6 +16,7 @@ import {
 import { useDisclosure, useLocalStorage } from "@mantine/hooks";
 import { IconBell, IconCheck } from "@tabler/icons-react";
 import { useAvisos } from "@/hooks/useAvisos";
+import { useCurrentMember } from "@/hooks/useCurrentMember";
 import { AVISO_REGRAS, contarNaoVistos, type Aviso } from "@/lib/avisos";
 
 /**
@@ -32,10 +33,14 @@ import { AVISO_REGRAS, contarNaoVistos, type Aviso } from "@/lib/avisos";
 export function AvisosBell() {
   const router = useRouter();
   const avisos = useAvisos();
+  const { data: member } = useCurrentMember();
   const [opened, { toggle, close }] = useDisclosure(false);
 
+  // Chave por usuário: sem o id, duas pessoas no mesmo navegador herdariam a
+  // leitura uma da outra — e quem entrasse depois começaria com o sino apagado
+  // para avisos que nunca viu.
   const [vistos, setVistos] = useLocalStorage<string[]>({
-    key: "seico-avisos-vistos",
+    key: `seico-avisos-vistos-${member?.id ?? "anon"}`,
     defaultValue: [],
     getInitialValueInEffect: true,
   });

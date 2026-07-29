@@ -116,6 +116,16 @@ quebra — é justamente o ponto.
 (`supabase/migrations/0002_auth_rls.sql`); `RequireAdmin` e o menu escondido são
 conveniência.
 
+**Trocar de usuário limpa o cache do React Query** (`AuthListener`), e é
+obrigatório. `useCurrentMember` tem `staleTime` e entrega o valor em cache antes
+de revalidar, então sem o `queryClient.clear()` um colaborador que entra logo
+depois de um admin no mesmo navegador vê o menu de Administração, o sino com
+avisos de admin e os botões de excluir até a revalidação chegar. A limpeza é
+condicionada a o `user.id` ter mudado — `SIGNED_IN` dispara a cada sessão
+reestabelecida, e limpar sempre viraria enxurrada de refetch. Estado por
+dispositivo (as não-lidas do sino) leva o id do usuário na chave pela mesma
+razão.
+
 Duas regras que não podem ser afrouxadas:
 
 1. `team_members` tem `GRANT UPDATE (full_name)` apenas. `role` só muda pela RPC
