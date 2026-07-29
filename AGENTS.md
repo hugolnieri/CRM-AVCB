@@ -361,16 +361,32 @@ nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
 ## Prospecção a partir dos dados abertos da Receita
 
-`scripts/prospectar.mjs` roda pelo GitHub Actions
+`scripts/prospectar.mjs` roda todo mês pelo GitHub Actions
 (`.github/workflows/prospeccao.yml`), levanta as empresas da região e grava em
 `public.prospeccao`. `Leads → Importar` recorta e decide. **Ninguém baixa nada.**
 
-**É sob demanda, não agendado.** Havia um `schedule` mensal; saiu. Uma rodada
-completa são ~27 GB transmitidos e horas de execução, e a Receita republica o
-cadastro uma vez por mês — coletar sem ninguém esperando o resultado gasta cota
-do Actions para encher uma tela que só vai ser aberta semanas depois. Quem vai
-prospectar dispara antes de começar. O `--partes 0` existe para isso: baixa 1 dos
-10 pedaços (~2,7 GB) e já entrega amostra representativa.
+A rodada mensal faz **duas** coisas, e manter cadastro atualizado é só metade:
+traz quem abriu na região desde a última coleta, e refresca razão social, nome
+fantasia, telefone, e-mail, endereço, porte e capital de quem **ainda está na
+fila** — o upsert é `onConflict` no CNPJ.
+
+**Ela não atualiza `leads` nem `clientes`, e isso é deliberado.** Importar copia
+os dados para `leads` e preenche `virou_lead_em`; dali em diante a coleta nunca
+mais toca naquela empresa. Um lead é o retrato do que foi negociado, com as
+correções feitas ao telefone — a Receita sobrescrevendo isso todo mês apagaria
+trabalho humano com dado de cadastro que costuma ser pior.
+
+**Empresa que fecha não é marcada**, e é a lacuna conhecida: a coleta só olha
+situação cadastral `02`, então quem deu baixa simplesmente para de aparecer e a
+linha continua na fila parecendo viva. O sinal existe e está no schema — a
+`competencia` fica presa no mês antigo enquanto as outras avançam. Nada na tela
+usa isso ainda; se for usar, é daí que sai.
+
+`--partes 0` baixa 1 dos 10 pedaços (~2,7 GB em vez de ~27 GB) e serve para
+testar o caminho inteiro. Traz **bem menos** empresas do que a região tem, e não
+é defeito: `Estabelecimentos` e `Empresas` não são particionados igual, então a
+maioria dos CNPJs achados no pedaço 0 do primeiro não acha razão social no pedaço
+0 do segundo, e essas linhas caem no filtro final.
 
 **Prospecção não é lead, e a separação é o ponto.** `prospeccao` é o material
 bruto; `leads` é o funil. Despejar 3.000 empresas em `leads` faria toda métrica

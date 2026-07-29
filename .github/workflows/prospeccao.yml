@@ -1,16 +1,16 @@
 # Levanta as empresas da regiao a partir do dump do CNPJ e grava em
-# `public.prospeccao`. Roda quando alguem pede, nao sozinho.
+# `public.prospeccao`, todo mes, sozinho.
 #
-# Nao ha `schedule` de proposito: sao ~27 GB e horas de execucao por rodada, e a
-# Receita republica o cadastro uma vez por mes. Coletar sem alguem esperando o
-# resultado gasta a cota do Actions para encher uma tela que ninguem vai abrir
-# naquele momento. Quem vai prospectar dispara antes de comecar.
+# A rodada mensal faz DUAS coisas, e manter cadastro atualizado e so metade:
+# traz quem abriu na regiao desde a ultima coleta, e refresca telefone, e-mail,
+# endereco e porte de quem ainda esta na fila. Quem ja virou lead nao e tocado --
+# ver AGENTS.md sobre por que isso e deliberado.
 #
 # SEGURANCA, e o repositorio e publico:
 #
-# - O unico gatilho e `workflow_dispatch`. NAO existe `pull_request`: um PR vindo
-#   de fork nao pode disparar este workflow, que e como os segredos ficariam
-#   expostos a quem abrisse um PR.
+# - Os gatilhos sao apenas `schedule` e `workflow_dispatch`. NAO existe
+#   `pull_request`: um PR vindo de fork nao pode disparar este workflow, que e
+#   como os segredos ficariam expostos a quem abrisse um PR.
 # - Nao usa a service role. A conta do robo e um usuario comum do sistema, e a
 #   RLS vale para ela como vale para qualquer colaborador. Se o segredo vazar, o
 #   estrago e o de um colaborador -- nao o de quem ignora RLS por completo.
@@ -19,9 +19,14 @@
 #   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   PROSPECCAO_BOT_EMAIL, PROSPECCAO_BOT_SENHA
 
-name: Prospeccao
+name: Prospeccao mensal
 
 on:
+  schedule:
+    # Dia 20, 06:00 UTC (03:00 em Brasilia). A Receita publica a competencia do
+    # mes por volta do dia 12, com atraso variavel -- dia 20 da folga suficiente
+    # sem esperar o mes inteiro. Roda de madrugada porque sao horas de execucao.
+    - cron: "0 6 20 * *"
   workflow_dispatch:
     inputs:
       camadas:
