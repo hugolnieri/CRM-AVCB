@@ -27,8 +27,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo inválido." }, { status: 400 });
   }
 
+  // `id` é opcional: sem ele a rota envia mas não marca nada em `notificacoes`.
+  // É o que permite o botão "Testar envio" do admin exercitar o caminho inteiro
+  // sem sujar o histórico com um evento que não aconteceu.
   const { id, destino, titulo, corpo } = payload;
-  if (!id || !destino || !titulo) {
+  if (!destino || !titulo) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes." }, { status: 400 });
   }
 
@@ -67,7 +70,12 @@ export async function POST(request: Request) {
 
     // Marca como enviada. Roda com a sessão do usuário (RLS), não com service
     // role — a policy de UPDATE em notificacoes existe só para isto.
-    await supabase.from("notificacoes").update({ enviada_em: new Date().toISOString() }).eq("id", id);
+    if (id) {
+      await supabase
+        .from("notificacoes")
+        .update({ enviada_em: new Date().toISOString() })
+        .eq("id", id);
+    }
 
     return NextResponse.json({ sent: true });
   } catch (err) {

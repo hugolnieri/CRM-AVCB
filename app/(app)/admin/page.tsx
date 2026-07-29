@@ -27,6 +27,7 @@ import {
   IconClockHour4,
   IconHistory,
   IconListDetails,
+  IconMailForward,
   IconPlus,
   IconTargetArrow,
   IconUsers,
@@ -48,6 +49,8 @@ import { AuditoriaTab } from "@/components/admin/AuditoriaTab";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
 import { setMemberRole } from "@/lib/supabase/queries/team";
+import { testarEnvio, type ResultadoEnvio } from "@/lib/supabase/queries/jornada";
+import { getErrorMessage } from "@/lib/errors";
 import { computeRelatorioDiario, totaisRelatorio, type LinhaRelatorio } from "@/lib/relatorioDiario";
 import { NOTIFICACAO_LABELS } from "@/types/jornada";
 import { CATEGORIA_LABELS, type CategoriaServico, type TipoServico } from "@/types/servico";
@@ -369,12 +372,62 @@ function EquipeTab() {
 
 // --- Notificações -----------------------------------------------------------
 
+/**
+ * Traduz o motivo da falha para uma instrução.
+ *
+ * Os dois casos previsíveis têm causas opostas — chave ausente e chave válida
+ * com destinatário recusado — e o segundo é o mais provável logo no começo:
+ * sem domínio verificado o Resend só entrega no e-mail dono da conta. O texto
+ * cru do provedor aparece junto de propósito, para um erro que eu não previ não
+ * virar mensagem bonitinha e sem saída.
+ */
+function ExplicacaoFalha({ motivo, destino }: { motivo?: string; destino: string }) {
+  if (motivo === "sem_provedor") {
+    return (
+      <Stack gap={4}>
+        <Text size="sm">
+          O servidor respondeu que não tem a chave. Ela existe na Vercel, mas variável de ambiente
+          só passa a valer num <strong>build novo</strong>.
+        </Text>
+        <Text size="sm">
+          Faça um <strong>Redeploy</strong> do último deploy na Vercel e teste de novo.
+        </Text>
+      </Stack>
+    );
+  }
+
+  const recusaDeDestinatario =
+    motivo !== undefined && /testing|verify a domain|own email|validation_error/i.test(motivo);
+
+  return (
+    <Stack gap={4}>
+      {recusaDeDestinatario ? (
+        <Text size="sm">
+          A chave funciona, mas o Resend recusou o destinatário. Sem domínio verificado o remetente
+          é <code>onboarding@resend.dev</code>, que só entrega no e-mail <strong>dono da conta
+          Resend</strong>. Ou use esse endereço aqui, ou verifique o domínio de {destino.split("@")[1]}{" "}
+          no Resend (Domains → Add).
+        </Text>
+      ) : (
+        <Text size="sm">O provedor recusou o envio.</Text>
+      )}
+      {motivo && (
+        <Text size="xs" c="dimmed" style={{ wordBreak: "break-word" }}>
+          Resposta do servidor: {motivo}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 function NotificacoesTab() {
   const { data: config, isLoading } = useConfiguracoes();
   const { data: notificacoes } = useNotificacoes();
   const { data: membros } = useTeamMembers();
   const update = useUpdateConfiguracoes();
   const [email, setEmail] = useState<string | null>(null);
+  const [testando, setTestando] = useState(false);
+  const [resultado, setResultado] = useState<ResultadoEnvio | null>(null);
 
   const nomePorId = useMemo(
     () => new Map((membros ?? []).map((m) => [m.id, m.fullName])),
@@ -409,6 +462,25 @@ function NotificacoesTab() {
         >
           Salvar
         </Button>
+        <Button
+          variant="default"
+          leftSection={<IconMailForward size={16} />}
+          loading={testando}
+          disabled={valorEmail.trim() === ""}
+          onClick={async () => {
+            setTestando(true);
+            setResultado(null);
+            try {
+              setResultado(await testarEnvio(valorEmail.trim()));
+            } catch (err) {
+              setResultado({ sent: false, reason: getErrorMessage(err, "Falha de rede.") });
+            } finally {
+              setTestando(false);
+            }
+          }}
+        >
+          Testar envio
+        </Button>
       </Group>
 
       <Stack gap="xs">
@@ -429,11 +501,30 @@ function NotificacoesTab() {
         />
       </Stack>
 
-      {!algumaEnviada && (notificacoes ?? []).length > 0 && (
-        <Alert color="yellow" title="E-mails ainda não estão saindo">
-          Os eventos estão sendo registrados, mas nenhum e-mail foi enviado. Falta definir a
-          variável <code>RESEND_API_KEY</code> no ambiente do projeto — sem ela o envio fica
-          desligado e só este histórico é preenchido.
+      {/* O resultado do teste é a única evidência confiável: a chave do provedor
+          é server-only, então esta tela não tem como saber se ela existe. */}
+      {resultado && (
+        <Alert
+          color={resultado.sent ? "green" : "red"}
+          title={resultado.sent ? "E-mail enviado" : "O envio falhou"}
+          withCloseButton
+          onClose={() => setResultado(null)}
+        >
+          {resultado.sent ? (
+            <>Confira a caixa de entrada de {valorEmail}. Se não chegou, veja o spam.</>
+          ) : (
+            <ExplicacaoFalha motivo={resultado.reason} destino={valorEmail} />
+          )}
+        </Alert>
+      )}
+
+      {!algumaEnviada && (notificacoes ?? []).length > 0 && !resultado && (
+        <Alert color="yellow" title="Nenhum e-mail saiu ainda">
+          Os eventos abaixo foram registrados, mas nenhum deles chegou a ser enviado. Isso pode ser
+          três coisas: são anteriores à configuração do provedor, a chave{" "}
+          <code>RESEND_API_KEY</code> ainda não entrou num build novo, ou o provedor recusou o
+          destinatário. Use <strong>Testar envio</strong> acima para descobrir qual — é o único
+          jeito, porque esta tela roda no navegador e não enxerga a chave, que fica no servidor.
         </Alert>
       )}
 

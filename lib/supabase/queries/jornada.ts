@@ -170,6 +170,36 @@ export async function fetchNotificacoes(): Promise<Notificacao[]> {
   }));
 }
 
+export interface ResultadoEnvio {
+  sent: boolean;
+  /** "sem_provedor" quando falta a chave; texto cru do provedor quando ele recusa. */
+  reason?: string;
+}
+
+/**
+ * Envia um e-mail de teste sem registrar nada em `notificacoes`.
+ *
+ * Existe porque a chave do provedor é server-only: o navegador não tem como
+ * saber se ela está definida, e inferir isso de "nenhuma notificação foi
+ * enviada" produz diagnóstico errado — a mesma evidência aparece quando a chave
+ * está certa e o provedor recusou o destinatário.
+ */
+export async function testarEnvio(destino: string): Promise<ResultadoEnvio> {
+  const resposta = await fetch("/api/notificar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      destino,
+      titulo: "Teste de configuração",
+      corpo: "Se você recebeu este e-mail, as notificações do SEICO estão funcionando.",
+    }),
+  });
+
+  const dados = (await resposta.json()) as ResultadoEnvio & { error?: string };
+  if (dados.error) return { sent: false, reason: dados.error };
+  return { sent: dados.sent === true, reason: dados.reason };
+}
+
 /**
  * Registra o evento e tenta enviar por e-mail.
  *
