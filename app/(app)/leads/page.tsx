@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { Button, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconPlus } from "@tabler/icons-react";
+import { IconFileImport, IconPlus } from "@tabler/icons-react";
 import { useCreateLead, useLeads } from "@/hooks/useLeads";
 import { useTiposServico } from "@/hooks/useServicos";
 import { useTeamMembers } from "@/hooks/useCurrentMember";
 import { LeadsTable } from "@/components/leads/LeadsTable";
 import { LeadFilters, type LeadFiltersValue } from "@/components/leads/LeadFilters";
 import { LeadDetailModal } from "@/components/leads/LeadDetailModal";
+import { ImportarLeads } from "@/components/leads/ImportarLeads";
 import { LeadForm } from "@/components/leads/LeadForm";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { leadMatchesQuery } from "@/lib/search";
@@ -29,6 +30,7 @@ export default function LeadsPage() {
     cidade: null,
   });
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [importando, { open: abrirImportacao, close: fecharImportacao }] = useDisclosure(false);
   const [newOpened, { open: openNew, close: closeNew }] = useDisclosure(false);
   const createLead = useCreateLead();
   const { data: tipos } = useTiposServico();
@@ -52,9 +54,18 @@ export default function LeadsPage() {
     <Stack>
       <Group justify="space-between">
         <Title order={2}>Leads</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
+        <Group gap="xs">
+          <Button
+            variant="default"
+            leftSection={<IconFileImport size={16} />}
+            onClick={abrirImportacao}
+          >
+            Importar
+          </Button>
+          <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
           Novo lead
-        </Button>
+          </Button>
+        </Group>
       </Group>
 
       {isLoading && <Loader />}
@@ -76,6 +87,8 @@ export default function LeadsPage() {
           <LeadsTable leads={filteredLeads} onRowClick={setSelectedLead} />
         </>
       )}
+
+      <ImportarLeads opened={importando} onClose={fecharImportacao} />
 
       <LeadDetailModal
         // Relê a versão do cache para o modal refletir edições sem reabrir.

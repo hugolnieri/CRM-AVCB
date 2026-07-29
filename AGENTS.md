@@ -321,6 +321,35 @@ cor significa resultado e não posição.
 laranja colide com o único lugar do app onde laranja quer dizer urgência. Cor
 nunca é o único sinal: `StageBadge` sempre leva o rótulo junto.
 
+## Prospecção a partir dos dados abertos da Receita
+
+`scripts/importar-receita.mjs` filtra o dump mensal do CNPJ (dadosabertos.rfb.gov.br)
+e produz um JSON; `Leads → Importar` revisa e grava. O download é manual porque
+o portal recusa IP de datacenter e os arquivos somam ~5 GB.
+
+Três coisas que quebram este import e não são óbvias:
+
+1. Os CSVs são **latin1**, não UTF-8. Lidos como UTF-8, todo "SÃO" vira "S?O" em
+   silêncio.
+2. A Receita usa a tabela **TOM** de municípios, **não** o código do IBGE. Por
+   isso o casamento é por nome normalizado, via o arquivo `Municipios`.
+3. `Socios.zip` traz nome e CPF de pessoas físicas. **Não importar** — dado de
+   empresa é público, dado de sócio é dado pessoal.
+
+O filtro de CNAE do script é o mesmo `tipos_servico.cnaes` do catálogo: a
+configuração que gera as sugestões é a query de prospecção. Se o catálogo não
+tem CNAE configurado, a importação entrega nomes e não entrega o que vender — a
+tela avisa quando isso acontece.
+
+`lib/importacao.ts` decide o que entra, e descartado **não some da lista**:
+aparece com o motivo. Sumir com 300 de 1.200 linhas deixaria quem importa sem
+saber se o filtro funcionou ou se o arquivo estava errado. Nada vem pré-marcado,
+pela mesma razão de a tela existir.
+
+`lib/regiao.ts` tem as cidades em camadas a partir de Cerquilho. Não usa a
+"região imediata" do IBGE direto porque ela agrupa por polo econômico e a de
+Sorocaba **exclui Tatuí e Laranjal Paulista**, que fazem divisa com a sede.
+
 ## Mapa por cidade
 
 `cidades` é **cache**, não cadastro: ninguém preenche à mão, e apagar uma linha

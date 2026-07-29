@@ -10,6 +10,9 @@ export const LEAD_ORIGENS = [
   "WhatsApp",
   "E-mail",
   "Visita/Prospecção",
+  // Gravada por lib/importacao.ts. Manter o texto em sincronia com
+  // ORIGEM_IMPORTACAO de la, senao o filtro da lista mostra duas origens.
+  "Base da Receita",
   "Evento",
   "Cliente antigo",
   "Outro",
