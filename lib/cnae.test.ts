@@ -207,6 +207,28 @@ describe("buscarCnae", () => {
   it("respects the limit", () => {
     expect(buscarCnae("de", 3)).toHaveLength(3);
   });
+
+  // Onze divisões do IBGE têm uma classe única de nome idêntico. O Autocomplete
+  // do Mantine usa a descrição como valor da opção e LANÇA em duplicata —
+  // durante o render, o que derruba a página inteira. Foi o que apagava o
+  // formulário de quem digitava "construção" num lead ou cliente.
+  it("nunca repete uma descrição, mesmo quando divisão e classe têm o mesmo nome", () => {
+    for (const termo of ["construção", "41", "412", "extração de carvão", "veterinárias", ""]) {
+      const descricoes = buscarCnae(termo).map((s) => s.descricao);
+      expect(new Set(descricoes).size, `termo: "${termo}"`).toBe(descricoes.length);
+    }
+  });
+
+  it("mantém a divisão quando o empate é por nome, porque o prefixo dela cobre a classe", () => {
+    const r = buscarCnae("construção de edifícios");
+    expect(r[0].codigo).toBe("41");
+    expect(r.filter((s) => s.descricao === "Construção de Edifícios")).toHaveLength(1);
+  });
+
+  // A deduplicação acontece ANTES do corte: senão pedir 12 devolveria 11.
+  it("não perde vagas do limite ao descartar repetidas", () => {
+    expect(buscarCnae("a", 10)).toHaveLength(10);
+  });
 });
 
 describe("exibirCodigo", () => {

@@ -162,23 +162,67 @@ export interface SugestaoCnae {
  * Sem termo devolve as divisões, que funcionam como a lista de segmentos para
  * folhear.
  */
+/**
+ * Descrição repetida é descartada, ficando a primeira da ordenação de quem
+ * chamou.
+ *
+ * Não é capricho: 11 divisões do IBGE têm uma classe única de nome **idêntico**
+ * ("41 Construção de Edifícios" e "41204 Construção de Edifícios"), e o
+ * `Autocomplete` do Mantine usa a descrição como valor da opção. Duas opções com
+ * o mesmo valor fazem ele lançar — e como isso acontece durante o render, o
+ * React derruba a árvore inteira e a página morre com "This page couldn't load".
+ * Quem digitava "construção" num lead ou cliente perdia o formulário.
+ *
+ * Fica a primeira porque cada caminho de `buscarCnae` já ordenou pelo que
+ * importa: no texto, a divisão vem antes (catálogo ordenado por código); no
+ * número, a mais específica vem antes, que é o que se pediu ao digitar o código.
+ * Como o casamento com o catálogo é por prefixo, as duas apontam para o mesmo
+ * lugar de qualquer forma — a divisão `41` cobre `41204`.
+ *
+ * O catálogo continua com as duas entradas de propósito: ele espelha o IBGE, e
+ * `descreverCnae` precisa resolver o código completo que vier da Receita.
+ */
+function semDescricoesRepetidas(entradas: EntradaCnae[]): EntradaCnae[] {
+  const vistas = new Set<string>();
+  return entradas.filter(([, descricao]) => {
+    if (vistas.has(descricao)) return false;
+    vistas.add(descricao);
+    return true;
+  });
+}
+
+/** Ponto único onde a lista vira sugestão: deduplica, corta e monta. */
+function finalizar(entradas: EntradaCnae[], limite: number): SugestaoCnae[] {
+  return semDescricoesRepetidas(entradas).slice(0, limite).map(montar);
+}
+
 export function buscarCnae(termo: string, limite = 12): SugestaoCnae[] {
   const digitos = apenasDigitosCnae(termo);
   const texto = normalizeForSearch(termo.trim());
 
   if (termo.trim() === "") {
-    return CNAE_CATALOGO.filter(([c]) => c.length === 2)
-      .slice(0, limite)
-      .map(montar);
+    return finalizar(
+      CNAE_CATALOGO.filter(([c]) => c.length === 2),
+      limite,
+    );
   }
 
   // Quem digitou número quer código; casa nos dois sentidos, para o CNAE
   // completo de 7 dígitos encontrar a classe de 5 e vice-versa.
   if (digitos.length >= 2 && texto.replace(/[^a-z]/g, "") === "") {
-    return CNAE_CATALOGO.filter(([c]) => c.startsWith(digitos) || digitos.startsWith(c))
-      .sort((a, b) => b[0].length - a[0].length)
-      .slice(0, limite)
-      .map(montar);
+    return finalizar(
+      CNAE_CATALOGO.filter(([c]) => c.startsWith(digitos) || digitos.startsWith(c)).sort((a, b) => {
+        // O código exatamente digitado encabeça. Sem isto, digitar "41" traria
+        // a classe "41204" na frente da divisão "41" — e como as duas se chamam
+        // "Construção de Edifícios", a deduplicação descartaria justamente a que
+        // foi pedida.
+        const exataA = a[0] === digitos ? 0 : 1;
+        const exataB = b[0] === digitos ? 0 : 1;
+        if (exataA !== exataB) return exataA - exataB;
+        return b[0].length - a[0].length;
+      }),
+      limite,
+    );
   }
 
   const casam = CNAE_CATALOGO.filter(([, descricao]) =>
@@ -187,15 +231,15 @@ export function buscarCnae(termo: string, limite = 12): SugestaoCnae[] {
 
   // Quem casa no começo do nome primeiro: buscar "padaria" deve trazer
   // "Padaria e Confeitaria" antes de "Comércio Varejista de Padaria".
-  return casam
-    .sort((a, b) => {
+  return finalizar(
+    casam.sort((a, b) => {
       const comecaA = normalizeForSearch(a[1]).startsWith(texto) ? 0 : 1;
       const comecaB = normalizeForSearch(b[1]).startsWith(texto) ? 0 : 1;
       if (comecaA !== comecaB) return comecaA - comecaB;
       return a[1].length - b[1].length;
-    })
-    .slice(0, limite)
-    .map(montar);
+    }),
+    limite,
+  );
 }
 
 function montar([codigo, descricao]: EntradaCnae): SugestaoCnae {
