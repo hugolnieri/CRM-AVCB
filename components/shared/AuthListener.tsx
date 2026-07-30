@@ -33,6 +33,14 @@ export function AuthListener() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || (!session && event !== "INITIAL_SESSION")) {
+        // Deixa rastro de QUAL evento derrubou a sessão. Existe porque houve um
+        // caso reproduzível em produção e não em desenvolvimento: sem saber se
+        // veio um `SIGNED_OUT` do servidor ou uma renovação que voltou sem
+        // sessão, qualquer correção seria chute. Sai pelo console de propósito —
+        // é a única superfície que a pessoa afetada consegue capturar sozinha.
+        console.warn(
+          `[auth] sessão encerrada — evento: ${event}, sessão: ${session ? "presente" : "nula"}`,
+        );
         usuarioDoCache.current = null;
         queryClient.clear();
         router.replace("/login");
