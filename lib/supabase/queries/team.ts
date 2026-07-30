@@ -32,18 +32,32 @@ export async function fetchTeamMembers(): Promise<TeamMember[]> {
   return (data as TeamMemberRow[]).map(mapRowToMember);
 }
 
-/** Perfil do usuário logado. Null quando não há sessão. */
+/**
+ * Perfil do usuário logado. Null quando não há sessão.
+ *
+ * `getSession()` e **não** `getUser()`: o primeiro lê o cookie, o segundo é uma
+ * ida ao servidor de Auth. A diferença importa porque `useCurrentMember` tem
+ * `refetchOnWindowFocus`, então `getUser()` fazia uma chamada de Auth toda vez
+ * que a janela recuperava o foco — no mesmo instante em que o `proxy.ts` também
+ * valida a sessão para a navegação. Com o token vencido, os dois disputam o
+ * mesmo refresh token; o GoTrue rotaciona, um dos dois recebe "already used" e o
+ * cliente emite `SIGNED_OUT`. O sintoma era deslogar ao voltar de outro
+ * aplicativo — justamente ao copiar telefone e e-mail para um lead novo.
+ *
+ * Trocar não afrouxa nada: quem decide o que esta pessoa pode fazer é a RLS, e a
+ * própria consulta abaixo passa por ela. O `id` daqui só escolhe qual linha ler.
+ */
 export async function fetchCurrentMember(): Promise<TeamMember | null> {
   const supabase = createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
 
   const { data, error } = await supabase
     .from("team_members")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", session.user.id)
     .maybeSingle();
 
   if (error) throw error;
