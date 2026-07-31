@@ -23,6 +23,22 @@ export function matchesQuery(
   return fields.some((field) => field && normalizeForSearch(field).includes(q));
 }
 
+/**
+ * Busca do Manual do Vendedor.
+ *
+ * Vai além do nome de propósito: quem procura ali costuma lembrar do assunto
+ * ("objeção de preço") ou do arquivo ("guia comercial"), e não do rótulo exato
+ * do catálogo. Por isso o roteiro escrito e os nomes dos anexos entram na
+ * busca junto com nome e sigla.
+ */
+export function tipoServicoMatchesQuery(
+  tipo: { nome: string; sigla: string | null; materialVenda: string | null },
+  nomesDeArquivos: string[],
+  query: string,
+): boolean {
+  return matchesQuery([tipo.nome, tipo.sigla, tipo.materialVenda, ...nomesDeArquivos], query);
+}
+
 /** Busca livre pelos campos que alguém plausivelmente lembraria de um lead. */
 export function leadMatchesQuery(lead: Lead, query: string): boolean {
   return matchesQuery(

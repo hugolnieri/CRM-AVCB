@@ -1,10 +1,25 @@
 "use client";
 
-import { Accordion, Anchor, Badge, Divider, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { IconExternalLink, IconPaperclip } from "@tabler/icons-react";
+import { useState } from "react";
+import {
+  Anchor,
+  Badge,
+  Card,
+  CloseButton,
+  Divider,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+import { IconChevronRight, IconExternalLink, IconPaperclip, IconSearch } from "@tabler/icons-react";
 import { useTiposServico } from "@/hooks/useServicos";
 import { useMateriaisVenda } from "@/hooks/useMateriaisVenda";
 import { MateriaisLista } from "@/components/shared/MateriaisVenda";
+import { DetailModal } from "@/components/shared/DetailModal";
+import { tipoServicoMatchesQuery } from "@/lib/search";
 import {
   CATEGORIA_LABELS,
   rotuloTipo,
@@ -15,14 +30,12 @@ import {
 
 /**
  * Material de venda por tipo do catálogo -- não é tela de cadastro. Quem edita
- * o texto é o admin, na aba Catálogo; aqui é só leitura, para o vendedor
- * consultar antes de ligar.
+ * o texto e anexa os arquivos é o admin, na aba Catálogo; aqui é só leitura,
+ * para o vendedor consultar antes de ligar.
  *
- * Accordion e não modal: a lista fechada mostra só os nomes, porque quem chega
- * aqui procura um serviço específico e o argumento inteiro de cada um na mesma
- * tela transforma a busca em rolagem. Aberto, o detalhe fica ao lado dos outros
- * nomes e recolhe no mesmo clique -- um modal obrigaria a fechar para voltar à
- * lista. `multiple` porque comparar dois treinamentos é caso real.
+ * A lista mostra só o nome e o detalhe abre em modal: com vinte e sete itens no
+ * catálogo, o argumento inteiro de cada um empilhado na mesma tela vira
+ * rolagem, e o modal devolve a lista inteira intacta ao fechar.
  *
  * Tipo sem material aparece na lista mesmo assim, com a lacuna à mostra no
  * detalhe: sumir da lista esconderia do admin que falta preencher.
@@ -30,32 +43,72 @@ import {
 export default function ManualVendedorPage() {
   const { data: tipos, isLoading } = useTiposServico();
   const { data: materiais } = useMateriaisVenda();
+  const [busca, setBusca] = useState("");
+  const [aberto, setAberto] = useState<TipoServico | null>(null);
 
   if (isLoading) return <Loader />;
 
-  const ativos = (tipos ?? []).filter((tipo) => tipo.ativo);
-  const treinamentos = ativos.filter((tipo) => tipo.categoria === "treinamento");
-  const servicos = ativos.filter((tipo) => tipo.categoria === "servico");
   const arquivos = materiais ?? [];
+  const arquivosDe = (tipo: TipoServico) =>
+    arquivos.filter((material) => material.tipoServicoId === tipo.id);
+
+  const encontrados = (tipos ?? [])
+    .filter((tipo) => tipo.ativo)
+    .filter((tipo) =>
+      tipoServicoMatchesQuery(
+        tipo,
+        arquivosDe(tipo).map((material) => material.nome),
+        busca,
+      ),
+    );
+
+  const treinamentos = encontrados.filter((tipo) => tipo.categoria === "treinamento");
+  const servicos = encontrados.filter((tipo) => tipo.categoria === "servico");
 
   return (
     <Stack>
       <div>
         <Title order={2}>Manual do Vendedor</Title>
         <Text size="sm" c="dimmed">
-          Clique em um item para abrir os argumentos de venda, e de novo para recolher. Editado
-          pelo admin em Administração → Catálogo.
+          Clique em um item para ver os argumentos de venda. Editado pelo admin em Administração →
+          Catálogo.
         </Text>
       </div>
 
-      <SecaoCategoria categoria="treinamento" tipos={treinamentos} materiais={arquivos} />
-      <SecaoCategoria categoria="servico" tipos={servicos} materiais={arquivos} />
+      <TextInput
+        placeholder="Buscar por nome, assunto do roteiro ou nome do arquivo"
+        leftSection={<IconSearch size={16} />}
+        value={busca}
+        onChange={(e) => setBusca(e.currentTarget.value)}
+        rightSection={
+          busca ? <CloseButton size="sm" onClick={() => setBusca("")} aria-label="Limpar busca" /> : null
+        }
+      />
 
-      {ativos.length === 0 && (
+      <SecaoCategoria
+        categoria="treinamento"
+        tipos={treinamentos}
+        materiais={arquivos}
+        onAbrir={setAberto}
+      />
+      <SecaoCategoria
+        categoria="servico"
+        tipos={servicos}
+        materiais={arquivos}
+        onAbrir={setAberto}
+      />
+
+      {encontrados.length === 0 && (
         <Text size="sm" c="dimmed">
-          Nenhum item ativo no catálogo ainda.
+          {busca
+            ? `Nada encontrado para "${busca}".`
+            : "Nenhum item ativo no catálogo ainda."}
         </Text>
       )}
+
+      <DetailModal record={aberto} title={(tipo) => rotuloTipo(tipo)} onClose={() => setAberto(null)}>
+        {(tipo) => <DetalheTipo tipo={tipo} materiais={arquivosDe(tipo)} />}
+      </DetailModal>
     </Stack>
   );
 }
@@ -64,42 +117,52 @@ function SecaoCategoria({
   categoria,
   tipos,
   materiais,
+  onAbrir,
 }: {
   categoria: CategoriaServico;
   tipos: TipoServico[];
   materiais: MaterialVenda[];
+  onAbrir: (tipo: TipoServico) => void;
 }) {
   if (tipos.length === 0) return null;
 
   return (
     <Stack gap="xs">
       <Title order={4}>{CATEGORIA_LABELS[categoria]}s</Title>
-      <Accordion variant="separated" multiple chevronPosition="right">
-        {tipos.map((tipo) => {
-          const doTipo = materiais.filter((m) => m.tipoServicoId === tipo.id);
-          return (
-            <Accordion.Item key={tipo.id} value={tipo.id}>
-              <Accordion.Control>
-                <Group gap="xs" wrap="nowrap">
-                  <Text fw={500} size="sm">
-                    {rotuloTipo(tipo)}
-                  </Text>
-                  {/* O clipe fechado avisa que há arquivo antes de abrir: quem
-                      procura a apostila não precisa expandir item por item. */}
-                  {doTipo.length > 0 && (
-                    <Badge variant="light" size="sm" color="gray" leftSection={<IconPaperclip size={11} />}>
-                      {doTipo.length}
-                    </Badge>
-                  )}
-                </Group>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <DetalheTipo tipo={tipo} materiais={doTipo} />
-              </Accordion.Panel>
-            </Accordion.Item>
-          );
-        })}
-      </Accordion>
+      {tipos.map((tipo) => {
+        const anexos = materiais.filter((material) => material.tipoServicoId === tipo.id).length;
+        return (
+          <Card
+            key={tipo.id}
+            withBorder
+            padding="sm"
+            radius="md"
+            onClick={() => onAbrir(tipo)}
+            style={{ cursor: "pointer" }}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                <Text fw={500} size="sm" truncate>
+                  {rotuloTipo(tipo)}
+                </Text>
+                {/* O clipe na lista avisa que há arquivo antes de abrir: quem
+                    procura a apostila não precisa entrar item por item. */}
+                {anexos > 0 && (
+                  <Badge
+                    variant="light"
+                    size="sm"
+                    color="gray"
+                    leftSection={<IconPaperclip size={11} />}
+                  >
+                    {anexos}
+                  </Badge>
+                )}
+              </Group>
+              <IconChevronRight size={16} opacity={0.5} />
+            </Group>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }
@@ -125,6 +188,9 @@ function DetalheTipo({ tipo, materiais }: { tipo: TipoServico; materiais: Materi
   return (
     <Stack gap="sm">
       <Group gap={4}>
+        <Badge variant="light" color="gray">
+          {CATEGORIA_LABELS[tipo.categoria]}
+        </Badge>
         {tipo.cargaHoraria && <Badge variant="light">{tipo.cargaHoraria}h</Badge>}
         {tipo.validadeMeses && (
           <Badge variant="light" color="grape">

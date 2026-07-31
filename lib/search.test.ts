@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { leadMatchesQuery, matchesQuery, normalizeForSearch } from "./search";
+import {
+  leadMatchesQuery,
+  matchesQuery,
+  normalizeForSearch,
+  tipoServicoMatchesQuery,
+} from "./search";
 import { makeLead } from "./testFixtures";
 
 describe("normalizeForSearch", () => {
@@ -38,5 +43,38 @@ describe("leadMatchesQuery", () => {
   it("returns true for an empty query and false for no match", () => {
     expect(leadMatchesQuery(makeLead(), "")).toBe(true);
     expect(leadMatchesQuery(makeLead(), "padaria")).toBe(false);
+  });
+});
+
+describe("tipoServicoMatchesQuery", () => {
+  const tipo = {
+    nome: "Trabalho em Altura",
+    sigla: "NR-35",
+    materialVenda: "Principal objeção: 'já treinamos há anos'.",
+  };
+
+  it("matches by name and sigla, accent-insensitively", () => {
+    expect(tipoServicoMatchesQuery(tipo, [], "altura")).toBe(true);
+    expect(tipoServicoMatchesQuery(tipo, [], "nr-35")).toBe(true);
+  });
+
+  // Quem procura no manual lembra do assunto, não do rótulo do catálogo.
+  it("reaches into the written script", () => {
+    expect(tipoServicoMatchesQuery(tipo, [], "objecao")).toBe(true);
+  });
+
+  it("reaches into the attached file names", () => {
+    expect(tipoServicoMatchesQuery(tipo, ["Guia Comercial.docx"], "guia")).toBe(true);
+    expect(tipoServicoMatchesQuery(tipo, [], "guia")).toBe(false);
+  });
+
+  it("survives a type with no sigla or script", () => {
+    const cru = { nome: "Primeiros Socorros", sigla: null, materialVenda: null };
+    expect(tipoServicoMatchesQuery(cru, [], "socorros")).toBe(true);
+    expect(tipoServicoMatchesQuery(cru, [], "altura")).toBe(false);
+  });
+
+  it("returns everything for an empty query", () => {
+    expect(tipoServicoMatchesQuery(tipo, [], "")).toBe(true);
   });
 });
