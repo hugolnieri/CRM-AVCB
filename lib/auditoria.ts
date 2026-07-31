@@ -23,6 +23,7 @@ export const TABELA_LABELS: Record<string, { singular: string; artigo: "o" | "a"
   team_members: { singular: "membro da equipe", artigo: "o" },
   registros_diarios: { singular: "jornada", artigo: "a" },
   tarefas: { singular: "tarefa", artigo: "a" },
+  materiais_venda: { singular: "arquivo de material de venda", artigo: "o" },
 };
 
 export const ACAO_LABELS: Record<AuditAcao, { verbo: string; label: string; color: string }> = {
@@ -74,6 +75,9 @@ export const CAMPO_LABELS: Record<string, string> = {
   validade_meses: "Validade (meses)",
   carga_horaria: "Carga horária",
   material_venda: "Material de venda",
+  caminho: "Arquivo",
+  tamanho_bytes: "Tamanho",
+  mime: "Tipo do arquivo",
   ativo: "Ativo",
   ativa: "Ativa",
   ordem: "Ordem",

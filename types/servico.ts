@@ -34,6 +34,24 @@ export interface TipoServico {
   createdAt: string;
 }
 
+/**
+ * Arquivo de apoio à venda anexado a um tipo do catálogo.
+ *
+ * Convive com `TipoServico.materialVenda` e não o substitui: o texto é o script
+ * curto lido na tela antes de ligar, o arquivo é a apostila pronta que o
+ * vendedor abre ou reenvia.
+ */
+export interface MaterialVenda {
+  id: string;
+  tipoServicoId: string;
+  /** Nome como foi subido, com extensão. O caminho no bucket é um uuid. */
+  nome: string;
+  caminho: string;
+  tamanhoBytes: number | null;
+  mime: string | null;
+  createdAt: string;
+}
+
 export interface Servico {
   id: string;
   clienteId: string;

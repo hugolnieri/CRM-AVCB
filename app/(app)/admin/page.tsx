@@ -56,6 +56,8 @@ import { MetasAdmin } from "@/components/metas/MetasAdmin";
 import { AuditoriaTab } from "@/components/admin/AuditoriaTab";
 import { EquipeTab } from "@/components/admin/EquipeTab";
 import { AdminDeleteButton } from "@/components/shared/AdminDeleteButton";
+import { MateriaisEditor, MateriaisIndisponivel } from "@/components/shared/MateriaisVenda";
+import { useMateriaisVenda } from "@/hooks/useMateriaisVenda";
 import { StatCard } from "@/components/shared/StatCard";
 import { DataTable } from "@/components/shared/DataTable";
 import { testarEnvio, type ResultadoEnvio } from "@/lib/supabase/queries/jornada";
@@ -526,6 +528,7 @@ function NotificacoesTab() {
 function TiposTab() {
   const { data: tipos, isLoading } = useTiposServico();
   const { data: servicos } = useServicos();
+  const { data: materiais } = useMateriaisVenda();
   const [novoOpened, { open: abrirNovo, close: fecharNovo }] = useDisclosure(false);
   const [emEdicao, setEmEdicao] = useState<TipoServico | null>(null);
   const create = useCreateTipoServico();
@@ -613,11 +616,14 @@ function TiposTab() {
       </Table.ScrollContainer>
 
       <Modal opened={novoOpened} onClose={fecharNovo} title={<Title order={3}>Novo tipo</Title>}>
-        <TipoForm
-          submitting={create.isPending}
-          submitLabel="Criar"
-          onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
-        />
+        <Stack>
+          <TipoForm
+            submitting={create.isPending}
+            submitLabel="Criar"
+            onSubmit={(input) => create.mutate(input, { onSuccess: fecharNovo })}
+          />
+          <MateriaisIndisponivel />
+        </Stack>
       </Modal>
 
       <Modal
@@ -635,6 +641,12 @@ function TiposTab() {
               onSubmit={(patch) =>
                 update.mutate({ id: emEdicao.id, patch }, { onSuccess: () => setEmEdicao(null) })
               }
+            />
+
+            <Divider />
+            <MateriaisEditor
+              tipoServicoId={emEdicao.id}
+              materiais={(materiais ?? []).filter((m) => m.tipoServicoId === emEdicao.id)}
             />
 
             <Divider />

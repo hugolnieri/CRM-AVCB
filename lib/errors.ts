@@ -24,6 +24,11 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   // catálogo. Desativar tira das listas e mantém o histórico legível.
   servicos_tipo_servico_id_fkey:
     "Este tipo já foi usado em serviços registrados e não pode ser excluído. Desative-o para tirá-lo das listas.",
+  // Storage, não PostgREST: o bucket material-venda recusa por mime e por
+  // tamanho (migration 0017). O texto cru vem em inglês e sem dizer o limite.
+  mime_type_not_supported: "Formato não aceito. Envie PDF, DOC, DOCX, PPT ou PPTX.",
+  "exceeded the maximum allowed size": "Arquivo muito grande. O limite é 20 MB.",
+  "The resource already exists": "Já existe um arquivo com este nome.",
 };
 
 /**
