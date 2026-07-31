@@ -7,6 +7,7 @@ import {
   Button,
   FileInput,
   Group,
+  Paper,
   Stack,
   Text,
   Tooltip,
@@ -81,35 +82,37 @@ function LinhaMaterial({
   excluindo?: boolean;
 }) {
   return (
-    <Group justify="space-between" wrap="nowrap" gap="xs">
-      <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-        <IconePorNome nome={material.nome} />
-        <div style={{ minWidth: 0 }}>
-          <Text size="sm" truncate>
+    <Paper withBorder radius="sm" px="xs" py={6}>
+      <Group justify="space-between" wrap="nowrap" gap="xs">
+        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+          <IconePorNome nome={material.nome} />
+          {/* Nome e tamanho na mesma linha: dois níveis empilhados dobravam a
+              altura da linha para caber um dado de quatro caracteres. */}
+          <Text size="sm" truncate style={{ minWidth: 0 }}>
             {material.nome}
           </Text>
-          <Text size="xs" c="dimmed">
+          <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>
             {formatarTamanho(material.tamanhoBytes)}
           </Text>
-        </div>
+        </Group>
+        <Group gap={2} wrap="nowrap">
+          <BotaoBaixar material={material} />
+          {aoExcluir && (
+            <Tooltip label="Excluir arquivo">
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                loading={excluindo}
+                onClick={aoExcluir}
+                aria-label="Excluir arquivo"
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </Group>
       </Group>
-      <Group gap={2} wrap="nowrap">
-        <BotaoBaixar material={material} />
-        {aoExcluir && (
-          <Tooltip label="Excluir arquivo">
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              loading={excluindo}
-              onClick={aoExcluir}
-              aria-label="Excluir arquivo"
-            >
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
-        )}
-      </Group>
-    </Group>
+    </Paper>
   );
 }
 
@@ -176,30 +179,39 @@ export function MateriaisEditor({
         </Stack>
       )}
 
-      <Group align="flex-end" gap="xs">
-        <FileInput
-          flex={1}
-          size="sm"
-          accept={ACEITOS}
-          placeholder="PDF, DOC, DOCX, PPT ou PPTX (até 20 MB)"
-          leftSection={<IconPaperclip size={16} />}
-          clearable
-          value={arquivo}
-          onChange={setArquivo}
-        />
-        <Button
-          size="sm"
-          leftSection={<IconUpload size={16} />}
-          disabled={!arquivo}
-          loading={upload.isPending}
-          onClick={() =>
-            arquivo &&
-            upload.mutate({ tipoServicoId, arquivo }, { onSuccess: () => setArquivo(null) })
-          }
-        >
-          Anexar
-        </Button>
-      </Group>
+      {/* Formatos e limite viram legenda, não placeholder: a frase inteira
+          dentro do campo quebrava em duas linhas e desalinhava o botão ao
+          lado. Como legenda ela continua visível antes da escolha, que é
+          quando serve para alguma coisa. */}
+      <Stack gap={6}>
+        <Group gap="xs" wrap="nowrap" align="center">
+          <FileInput
+            flex={1}
+            size="sm"
+            accept={ACEITOS}
+            placeholder="Escolher arquivo"
+            leftSection={<IconPaperclip size={16} />}
+            clearable
+            value={arquivo}
+            onChange={setArquivo}
+          />
+          <Button
+            size="sm"
+            leftSection={<IconUpload size={16} />}
+            disabled={!arquivo}
+            loading={upload.isPending}
+            onClick={() =>
+              arquivo &&
+              upload.mutate({ tipoServicoId, arquivo }, { onSuccess: () => setArquivo(null) })
+            }
+          >
+            Anexar
+          </Button>
+        </Group>
+        <Text size="xs" c="dimmed">
+          PDF, DOC, DOCX, PPT ou PPTX · até 20 MB
+        </Text>
+      </Stack>
     </Stack>
   );
 }
