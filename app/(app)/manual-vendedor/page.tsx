@@ -1,17 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { Badge, Card, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { IconChevronRight } from "@tabler/icons-react";
 import { useTiposServico } from "@/hooks/useServicos";
+import { DetailModal } from "@/components/shared/DetailModal";
 import { CATEGORIA_LABELS, rotuloTipo, type CategoriaServico, type TipoServico } from "@/types/servico";
 
 /**
  * Material de venda por tipo do catálogo -- não é tela de cadastro. Quem edita
  * o texto é o admin, na aba Catálogo; aqui é só leitura, para o vendedor
- * consultar antes de ligar. Tipo sem material aparece mesmo assim, com a
- * lacuna à mostra, em vez de sumir da lista.
+ * consultar antes de ligar.
+ *
+ * A lista mostra só o nome: quem chega aqui está procurando um serviço
+ * específico, e despejar o argumento de venda inteiro de cada um na mesma tela
+ * transforma a busca em rolagem. O detalhe abre no clique. Tipo sem material
+ * aparece na lista mesmo assim, com a lacuna à mostra no detalhe, em vez de
+ * sumir -- some da lista seria esconder do admin que falta preencher.
  */
 export default function ManualVendedorPage() {
   const { data: tipos, isLoading } = useTiposServico();
+  const [aberto, setAberto] = useState<TipoServico | null>(null);
 
   if (isLoading) return <Loader />;
 
@@ -24,19 +33,27 @@ export default function ManualVendedorPage() {
       <div>
         <Title order={2}>Manual do Vendedor</Title>
         <Text size="sm" c="dimmed">
-          Argumentos de venda de cada item do catálogo. Editado pelo admin em
+          Clique em um item para ver os argumentos de venda. Editado pelo admin em
           Administração → Catálogo.
         </Text>
       </div>
 
-      <SecaoCategoria categoria="treinamento" tipos={treinamentos} />
-      <SecaoCategoria categoria="servico" tipos={servicos} />
+      <SecaoCategoria categoria="treinamento" tipos={treinamentos} onAbrir={setAberto} />
+      <SecaoCategoria categoria="servico" tipos={servicos} onAbrir={setAberto} />
 
       {ativos.length === 0 && (
         <Text size="sm" c="dimmed">
           Nenhum item ativo no catálogo ainda.
         </Text>
       )}
+
+      <DetailModal
+        record={aberto}
+        title={(tipo) => rotuloTipo(tipo)}
+        onClose={() => setAberto(null)}
+      >
+        {(tipo) => <DetalheTipo tipo={tipo} />}
+      </DetailModal>
     </Stack>
   );
 }
@@ -44,40 +61,56 @@ export default function ManualVendedorPage() {
 function SecaoCategoria({
   categoria,
   tipos,
+  onAbrir,
 }: {
   categoria: CategoriaServico;
   tipos: TipoServico[];
+  onAbrir: (tipo: TipoServico) => void;
 }) {
   if (tipos.length === 0) return null;
 
   return (
-    <Stack gap="sm">
+    <Stack gap="xs">
       <Title order={4}>{CATEGORIA_LABELS[categoria]}s</Title>
       {tipos.map((tipo) => (
-        <TipoCard key={tipo.id} tipo={tipo} />
+        <Card
+          key={tipo.id}
+          withBorder
+          padding="sm"
+          radius="md"
+          onClick={() => onAbrir(tipo)}
+          style={{ cursor: "pointer" }}
+        >
+          <Group justify="space-between" wrap="nowrap">
+            <Text fw={500} size="sm">
+              {rotuloTipo(tipo)}
+            </Text>
+            <IconChevronRight size={16} opacity={0.5} />
+          </Group>
+        </Card>
       ))}
     </Stack>
   );
 }
 
-function TipoCard({ tipo }: { tipo: TipoServico }) {
+function DetalheTipo({ tipo }: { tipo: TipoServico }) {
   return (
-    <Card withBorder padding="md">
-      <Group justify="space-between" mb="xs">
-        <Title order={5}>{rotuloTipo(tipo)}</Title>
-        <Group gap={4}>
-          {tipo.cargaHoraria && <Badge variant="light">{tipo.cargaHoraria}h</Badge>}
-          {tipo.validadeMeses && (
-            <Badge variant="light" color="grape">
-              Validade: {tipo.validadeMeses} meses
-            </Badge>
-          )}
-          {tipo.cnaes && tipo.cnaes.length > 0 && (
-            <Badge variant="light" color="blue">
-              CNAE {tipo.cnaes.join(", ")}
-            </Badge>
-          )}
-        </Group>
+    <Stack gap="sm">
+      <Group gap={4}>
+        <Badge variant="light" color="gray">
+          {CATEGORIA_LABELS[tipo.categoria]}
+        </Badge>
+        {tipo.cargaHoraria && <Badge variant="light">{tipo.cargaHoraria}h</Badge>}
+        {tipo.validadeMeses && (
+          <Badge variant="light" color="grape">
+            Validade: {tipo.validadeMeses} meses
+          </Badge>
+        )}
+        {tipo.cnaes && tipo.cnaes.length > 0 && (
+          <Badge variant="light" color="blue">
+            CNAE {tipo.cnaes.join(", ")}
+          </Badge>
+        )}
       </Group>
 
       {tipo.materialVenda ? (
@@ -89,6 +122,6 @@ function TipoCard({ tipo }: { tipo: TipoServico }) {
           Sem material cadastrado ainda -- edite em Administração → Catálogo.
         </Text>
       )}
-    </Card>
+    </Stack>
   );
 }
