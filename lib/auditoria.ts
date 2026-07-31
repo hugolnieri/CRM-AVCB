@@ -73,6 +73,7 @@ export const CAMPO_LABELS: Record<string, string> = {
   categoria: "Categoria",
   validade_meses: "Validade (meses)",
   carga_horaria: "Carga horária",
+  material_venda: "Material de venda",
   ativo: "Ativo",
   ativa: "Ativa",
   ordem: "Ordem",

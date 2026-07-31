@@ -25,6 +25,7 @@ import {
   IconLogout,
   IconSun,
   IconMoon,
+  IconBook2,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -60,6 +61,7 @@ const NAV_GROUPS: {
       { href: "/kanban", label: "Pipeline", icon: IconLayoutKanban },
       { href: "/clientes", label: "Clientes", icon: IconUsers },
       { href: "/relatorios", label: "Relatorios", icon: IconReportAnalytics },
+      { href: "/manual-vendedor", label: "Manual do Vendedor", icon: IconBook2 },
     ],
   },
   {

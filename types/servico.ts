@@ -24,6 +24,11 @@ export interface TipoServico {
    */
   cnaes: string[] | null;
   cargaHoraria: number | null;
+  /**
+   * Argumentos de venda deste tipo, para o Manual do Vendedor. Null = sem
+   * material cadastrado ainda -- a tela mostra a lacuna em vez de escondê-la.
+   */
+  materialVenda: string | null;
   ativo: boolean;
   ordem: number;
   createdAt: string;

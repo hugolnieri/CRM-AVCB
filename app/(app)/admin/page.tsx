@@ -18,6 +18,7 @@ import {
   TagsInput,
   Tabs,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from "@mantine/core";
@@ -711,6 +712,7 @@ function TipoForm({
       validadeMeses: tipo?.validadeMeses ?? ("" as number | ""),
       cargaHoraria: tipo?.cargaHoraria ?? ("" as number | ""),
       cnaes: tipo?.cnaes ?? ([] as string[]),
+      materialVenda: tipo?.materialVenda ?? "",
       ativo: tipo?.ativo ?? true,
       ordem: tipo?.ordem ?? 0,
     },
@@ -733,6 +735,7 @@ function TipoForm({
           cnaes: normalizarPrefixos(values.cnaes).length > 0
             ? normalizarPrefixos(values.cnaes)
             : null,
+          materialVenda: values.materialVenda.trim() || null,
           ativo: values.ativo,
           ordem: Number(values.ordem),
         }),
@@ -782,6 +785,15 @@ function TipoForm({
           de edifícios, <strong>4120</strong> só aquela classe. Sem nenhum, o serviço nunca é
           sugerido automaticamente — o que é o certo para quem atende qualquer ramo.
         </Text>
+
+        <Textarea
+          label="Material de venda"
+          description="Argumentos, script de abordagem e objeções comuns -- aparece no Manual do Vendedor para quem vai vender este tipo"
+          placeholder="Ex.: Obrigatório por norma para quem trabalha acima de 2m. Principal objeção: 'já treinamos há anos' -- reforçar que o certificado vence e a NR exige reciclagem periódica."
+          autosize
+          minRows={4}
+          {...form.getInputProps("materialVenda")}
+        />
 
         <Switch
           label="Ativo"

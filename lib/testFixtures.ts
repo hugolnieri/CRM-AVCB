@@ -75,6 +75,7 @@ export function makeTipoServico(overrides: Partial<TipoServico> = {}): TipoServi
     cnaes: null,
     validadeMeses: 24,
     cargaHoraria: 8,
+    materialVenda: null,
     ativo: true,
     ordem: 10,
     createdAt: "2026-01-01T00:00:00Z",
