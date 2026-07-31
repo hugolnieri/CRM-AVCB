@@ -1,0 +1,224 @@
+/*
+ * Estilo próprio, sem Mantine: o Mantine deste projeto está calibrado para
+ * telas de administração, e uma apresentação ao cliente pede outra densidade.
+ * CSS Module mantém tudo escopado nesta rota, sem vazar para o CRM.
+ *
+ * Mobile-first porque o link chega pelo WhatsApp: a maioria abre no celular.
+ */
+
+.pagina {
+  --tinta: #0f172a;
+  --tinta-suave: #475569;
+  --marca: #0e4f8f;
+  --borda: #e2e8f0;
+  --fundo-suave: #f8fafc;
+
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px 64px;
+  color: var(--tinta);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  line-height: 1.6;
+}
+
+/* --- topo ---------------------------------------------------------------- */
+
+.hero {
+  padding: 48px 0 32px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.marca {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--marca);
+}
+
+.titulo {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.subtitulo {
+  margin: 0;
+  font-size: 17px;
+  color: var(--tinta-suave);
+}
+
+/* Os três números que o cliente quer confirmar antes de qualquer outra coisa. */
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selos li {
+  flex: 1 1 140px;
+  padding: 12px 16px;
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  background: var(--fundo-suave);
+}
+
+.selos strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.selos span {
+  font-size: 13px;
+  color: var(--tinta-suave);
+}
+
+/* --- seções -------------------------------------------------------------- */
+
+.secao {
+  padding: 36px 0 0;
+}
+
+.secao h2 {
+  margin: 0 0 14px;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+
+.secao p {
+  margin: 0 0 12px;
+  color: var(--tinta-suave);
+}
+
+.reforco {
+  padding: 14px 16px;
+  border-left: 3px solid var(--marca);
+  border-radius: 0 8px 8px 0;
+  background: var(--fundo-suave);
+}
+
+.reforco strong {
+  color: var(--tinta);
+}
+
+.lista {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--tinta-suave);
+}
+
+.lista li {
+  margin-bottom: 8px;
+}
+
+.nota {
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+/* --- etapas -------------------------------------------------------------- */
+
+.etapas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: etapa;
+}
+
+.etapas li {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.etapas li:last-child {
+  border-bottom: none;
+}
+
+.etapas strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.etapas p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.numero {
+  flex: 0 0 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--marca);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* --- chamada final ------------------------------------------------------- */
+
+.cta {
+  margin-top: 40px;
+  padding: 28px 24px;
+  border-radius: 14px;
+  background: var(--marca);
+  color: #fff;
+  text-align: center;
+}
+
+.cta h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.cta p {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cta p:last-child {
+  margin-bottom: 0;
+}
+
+/*
+ * Lacuna deliberada e impossível de publicar sem ver. Dado que a empresa
+ * precisa fornecer não pode ser inventado por quem escreveu a página, e um
+ * placeholder discreto vai para produção sem ninguém notar.
+ */
+.placeholder {
+  padding: 12px 14px;
+  border: 2px dashed #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e !important;
+  font-size: 14px;
+  text-align: left;
+}
+
+/* --- rodapé -------------------------------------------------------------- */
+
+.rodape {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--borda);
+  font-size: 13px;
+  color: var(--tinta-suave);
+  text-align: center;
+}
+
+.rodape p {
+  margin: 0;
+}

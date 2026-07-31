@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login"];
+/**
+ * `/lp` são as apresentações que o vendedor manda ao cliente por WhatsApp —
+ * público que nunca vai ter login. São páginas estáticas: não leem o PostgREST,
+ * então liberá-las aqui não abre nenhuma linha do banco para `anon`.
+ */
+const PUBLIC_PATHS = ["/login", "/lp"];
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
