@@ -1,129 +1,314 @@
 /*
- * Estilo próprio, sem Mantine: o Mantine deste projeto está calibrado para
- * telas de administração, e uma apresentação ao cliente pede outra densidade.
- * CSS Module mantém tudo escopado nesta rota, sem vazar para o CRM.
+ * Apresentação da NR-35 -- folha de especificação técnica, não tela de sistema.
  *
- * Mobile-first porque o link chega pelo WhatsApp: a maioria abre no celular.
+ * A página **assume um mundo visual só**, claro, e não acompanha o tema do
+ * navegador. É escolha, não esquecimento: o CRM tem modo escuro e este link
+ * herdava o fundo dele, deixando tinta escura sobre fundo escuro. Material que
+ * um vendedor manda para um cliente precisa chegar igual em todo aparelho, do
+ * mesmo jeito que um impresso chega.
+ *
+ * Paleta tirada do vocabulário do assunto: papel frio de desenho técnico, tinta
+ * verde-preta, e o verde ISO de "condição segura" como único acento. A ferrugem
+ * aparece uma vez só, no aviso de validade -- é a informação que custa dinheiro
+ * ao cliente se passar batida.
+ *
+ * Mobile-first: o link chega pelo WhatsApp, a maioria abre no celular.
  */
 
 .pagina {
-  --tinta: #0f172a;
-  --tinta-suave: #475569;
-  --marca: #0e4f8f;
-  --borda: #e2e8f0;
-  --fundo-suave: #f8fafc;
+  --papel: #eff1ef;
+  --papel-alto: #f7f8f7;
+  --tinta: #10201c;
+  --tinta-media: #46554f;
+  --tinta-fraca: #7d8a85;
+  --verde: #0a6a4c;
+  --verde-fundo: #e4ece8;
+  --ferrugem: #a8420a;
+  --ferrugem-fundo: #f8eee7;
+  --fio: #d5dbd8;
 
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0 20px 64px;
+  --passo: clamp(48px, 9vw, 76px);
+
+  min-height: 100dvh;
+  padding: 0 22px 64px;
+  background: var(--papel);
   color: var(--tinta);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
-  line-height: 1.6;
+  color-scheme: light;
+  font-family: var(--fonte-texto), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * O CRM pinta o `body` de escuro quando o sistema está em modo escuro, e era
+ * isso que deixava esta página com tinta escura sobre fundo escuro. O seletor
+ * precisa vencer o atributo que o Mantine escreve no `html`, daí a
+ * especificidade explícita em vez de um `body` solto.
+ */
+:global(html[data-mantine-color-scheme]) body:has(.pagina),
+:global(html) body:has(.pagina) {
+  background: #eff1ef;
+}
+
+.coluna {
+  max-width: 660px;
+  margin: 0 auto;
 }
 
 /* --- topo ---------------------------------------------------------------- */
 
 .hero {
-  padding: 48px 0 32px;
-  border-bottom: 1px solid var(--borda);
+  display: flex;
+  flex-direction: column;
+  padding: 56px 0 0;
 }
 
 .marca {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  margin: 0 0 clamp(40px, 8vw, 64px);
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--marca);
+  color: var(--verde);
+}
+
+.marcaSep {
+  color: var(--tinta-fraca);
+  padding: 0 2px;
+}
+
+.norma {
+  margin: 0 0 10px;
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tinta-fraca);
 }
 
 .titulo {
-  margin: 0 0 12px;
-  font-size: clamp(28px, 7vw, 40px);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-family: var(--fonte-titulo), system-ui, sans-serif;
+  font-size: clamp(40px, 11vw, 68px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 .subtitulo {
-  margin: 0;
-  font-size: 17px;
-  color: var(--tinta-suave);
+  margin: 18px 0 0;
+  max-width: 30em;
+  font-size: 17.5px;
+  color: var(--tinta-media);
+  text-wrap: pretty;
 }
 
-/* Os três números que o cliente quer confirmar antes de qualquer outra coisa. */
-.selos {
+/* --- o limiar de 2 metros ------------------------------------------------ */
+
+.limiar {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
-  margin: 28px 0 0;
-  padding: 0;
-  list-style: none;
+  margin-top: clamp(40px, 8vw, 60px);
 }
 
-.selos li {
-  flex: 1 1 140px;
-  padding: 12px 16px;
-  border: 1px solid var(--borda);
-  border-radius: 10px;
-  background: var(--fundo-suave);
-}
-
-.selos strong {
-  display: block;
-  font-size: 20px;
-  line-height: 1.2;
-}
-
-.selos span {
+.limiarCota {
+  flex: none;
+  font-family: var(--fonte-dado), ui-monospace, monospace;
   font-size: 13px;
-  color: var(--tinta-suave);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--verde);
+}
+
+/* A régua: traço cheio com um tique vertical na ponta, como cota de desenho. */
+.limiarLinha {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: var(--verde);
+  transform-origin: left center;
+  animation: traca 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.limiarLinha::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -6px;
+  width: 2px;
+  height: 14px;
+  background: var(--verde);
+}
+
+@keyframes traca {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.limiarNota {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  color: var(--tinta-media);
 }
 
 /* --- seções -------------------------------------------------------------- */
 
 .secao {
-  padding: 36px 0 0;
+  padding-top: var(--passo);
 }
 
-.secao h2 {
-  margin: 0 0 14px;
-  font-size: 21px;
+.secaoTitulo {
+  margin: 0 0 20px;
+  font-family: var(--fonte-titulo), system-ui, sans-serif;
+  font-size: clamp(21px, 4.5vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+}
+
+.texto {
+  margin: 0;
+  color: var(--tinta-media);
+  text-wrap: pretty;
+}
+
+/* --- ficha técnica ------------------------------------------------------- */
+
+.ficha {
+  margin: 0;
+  border-top: 1px solid var(--fio);
+}
+
+.fichaLinha {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--fio);
+}
+
+.fichaRotulo {
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--tinta-fraca);
+}
+
+.fichaValor {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--fonte-titulo), system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
-.secao p {
-  margin: 0 0 12px;
-  color: var(--tinta-suave);
+.fichaNota {
+  font-family: var(--fonte-texto), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--tinta-fraca);
 }
 
-.reforco {
-  padding: 14px 16px;
-  border-left: 3px solid var(--marca);
-  border-radius: 0 8px 8px 0;
-  background: var(--fundo-suave);
+@media (min-width: 620px) {
+  .fichaLinha {
+    grid-template-columns: 190px 1fr;
+    align-items: baseline;
+    gap: 20px;
+  }
+
+  .fichaRotulo {
+    padding-top: 4px;
+  }
 }
 
-.reforco strong {
-  color: var(--tinta);
+/* --- aviso de validade --------------------------------------------------- */
+
+.aviso {
+  margin-top: 22px;
+  padding: 16px 18px;
+  background: var(--ferrugem-fundo);
+  border-left: 3px solid var(--ferrugem);
 }
 
-.lista {
+.avisoTitulo {
+  margin: 0 0 4px;
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ferrugem);
+}
+
+.avisoTexto {
   margin: 0;
-  padding-left: 20px;
-  color: var(--tinta-suave);
+  font-size: 15px;
+  color: var(--tinta-media);
 }
 
-.lista li {
-  margin-bottom: 8px;
+/* --- conteúdo programático ---------------------------------------------- */
+
+.conteudo {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--fio);
 }
 
-.nota {
-  margin-top: 14px;
-  font-size: 13px;
+.conteudoItem {
+  position: relative;
+  padding: 12px 0 12px 26px;
+  border-bottom: 1px solid var(--fio);
+  color: var(--tinta-media);
+  text-wrap: pretty;
+}
+
+/* Marca de verificação desenhada com borda: o item é uma exigência cumprida. */
+.conteudoItem::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 20px;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--verde);
+  border-bottom: 2px solid var(--verde);
+  transform: rotate(-45deg);
+}
+
+.fonte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--tinta-fraca);
+}
+
+.clausula {
+  padding: 2px 7px;
+  background: var(--verde-fundo);
+  color: var(--verde);
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- etapas -------------------------------------------------------------- */
@@ -132,93 +317,128 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  counter-reset: etapa;
-}
-
-.etapas li {
   display: flex;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--borda);
+  flex-direction: column;
 }
 
-.etapas li:last-child {
-  border-bottom: none;
-}
-
-.etapas strong {
-  display: block;
-  margin-bottom: 2px;
-}
-
-.etapas p {
-  margin: 0;
-  font-size: 15px;
-}
-
-.numero {
-  flex: 0 0 28px;
-  height: 28px;
+.etapa {
   display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--marca);
-  color: #fff;
-  font-size: 14px;
+  grid-template-columns: 42px 1fr;
+  gap: 4px 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--fio);
+}
+
+.etapa:first-child {
+  border-top: 1px solid var(--fio);
+}
+
+.etapaNumero {
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--verde);
+  padding-top: 3px;
+}
+
+.etapaCorpo {
+  min-width: 0;
+}
+
+.etapaTitulo {
+  margin: 0 0 3px;
+  font-family: var(--fonte-titulo), system-ui, sans-serif;
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.etapaTexto {
+  margin: 0;
+  font-size: 15.5px;
+  color: var(--tinta-media);
+  text-wrap: pretty;
 }
 
 /* --- chamada final ------------------------------------------------------- */
 
-.cta {
-  margin-top: 40px;
-  padding: 28px 24px;
-  border-radius: 14px;
-  background: var(--marca);
-  color: #fff;
-  text-align: center;
+.chamada {
+  margin-top: var(--passo);
+  padding: clamp(28px, 6vw, 40px);
+  background: var(--verde);
+  color: var(--papel-alto);
 }
 
-.cta h2 {
+.chamadaTitulo {
   margin: 0 0 8px;
-  font-size: 22px;
+  font-family: var(--fonte-titulo), system-ui, sans-serif;
+  font-size: clamp(24px, 5.5vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
-.cta p {
-  margin: 0 0 12px;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.cta p:last-child {
-  margin-bottom: 0;
+.chamadaTexto {
+  margin: 0;
+  max-width: 32em;
+  color: rgba(247, 248, 247, 0.82);
+  text-wrap: pretty;
 }
 
 /*
- * Lacuna deliberada e impossível de publicar sem ver. Dado que a empresa
+ * Lacuna deliberada, e impossível de publicar sem ver: dado que a empresa
  * precisa fornecer não pode ser inventado por quem escreveu a página, e um
- * placeholder discreto vai para produção sem ninguém notar.
+ * marcador discreto vai para produção sem ninguém notar.
  */
-.placeholder {
-  padding: 12px 14px;
-  border: 2px dashed #f59e0b;
-  border-radius: 8px;
-  background: #fffbeb;
-  color: #92400e !important;
-  font-size: 14px;
-  text-align: left;
+.pendente {
+  display: block;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  background: var(--ferrugem-fundo);
+  border: 1px dashed var(--ferrugem);
+  color: var(--tinta-media);
+  font-size: 14.5px;
+  text-wrap: pretty;
+}
+
+.pendenteSelo {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ferrugem);
 }
 
 /* --- rodapé -------------------------------------------------------------- */
 
 .rodape {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid var(--borda);
-  font-size: 13px;
-  color: var(--tinta-suave);
-  text-align: center;
+  margin-top: var(--passo);
+  padding-top: 22px;
+  border-top: 1px solid var(--fio);
 }
 
-.rodape p {
+.rodapeMarca {
   margin: 0;
+  font-family: var(--fonte-dado), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--verde);
+}
+
+.rodapeNota {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--tinta-fraca);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .limiarLinha {
+    animation: none;
+  }
 }
