@@ -1,9 +1,10 @@
 # Briefing: apresentação da NR-35 para o cliente
 
-Documento de contexto para o Codex construir uma versão desta página. Já existe
-uma versão feita pelo Claude Code em `app/(public)/lp/nr-35/` — a ideia é
-comparar as duas e escolher, então **leia este briefing antes de olhar a
-implementação existente**, para não ancorar nela.
+Documento de contexto para quem for construir a próxima landing page do
+Manual do Vendedor. Serviu para a primeira: houve duas versões em paralelo
+(Claude Code e Codex) em `/lp/nr-35`, comparadas lado a lado, e a do Codex foi
+a escolhida — é a que está no ar hoje. As regras abaixo continuam valendo para
+a próxima página (outro tipo do catálogo).
 
 ## O público: cliente que já disse que quer
 
@@ -77,8 +78,9 @@ Os números batem com o que está cadastrado no catálogo do CRM para o NR-35
 
 ### O que NÃO pode ser inventado
 
-Deixe como placeholder **visualmente óbvio** (a versão do Claude usa uma caixa
-tracejada âmbar, justamente para ser impossível publicar sem ver):
+Deixe como placeholder **visualmente óbvio** — a versão no ar usa um bloco
+"[A PREENCHER ANTES DE PUBLICAR]" destacado, justamente para ser impossível
+publicar sem ver:
 
 - Telefone/WhatsApp e e-mail de contato.
 - Diferenciais da SEICO: tempo de mercado, formação dos instrutores, região
@@ -103,14 +105,18 @@ feita a um cliente real. Prefira a lacuna gritante.
 | O quê | Onde |
 |---|---|
 | Este briefing | `docs/briefing-landing-pages-vendedor.md` |
-| Versão do Claude Code | `app/(public)/lp/nr-35/page.tsx` + `page.module.css` |
+| Apresentação da NR-35 (no ar) | `app/(public)/lp/nr-35/page.tsx` + `page.module.css` + `opengraph-image.tsx` |
 | Liberação da rota pública | `proxy.ts` (`PUBLIC_PATHS`) |
-| Manual do Vendedor (link para a apresentação) | `app/(app)/manual-vendedor/page.tsx` |
+| Manual do Vendedor (link + botão de copiar) | `app/(app)/manual-vendedor/page.tsx`, mapa `APRESENTACOES_POR_SIGLA` |
 | Material de venda interno (outro público!) | coluna `tipos_servico.material_venda`, editada em `/admin` → Catálogo |
 
-**Sugestão para a versão do Codex**: criar em `app/(public)/lp/nr-35-codex/`
-para as duas coexistirem e serem comparadas lado a lado no mesmo deploy. Depois
-de escolhida, a perdedora sai e a vencedora fica em `/lp/nr-35`.
+**Para a próxima página** (outro tipo do catálogo): criar em
+`app/(public)/lp/<slug-do-tipo>/`, liberar em `PUBLIC_PATHS` se ainda não
+estiver coberta por `/lp`, e acrescentar a entrada em
+`APRESENTACOES_POR_SIGLA` no Manual do Vendedor. Se surgirem duas versões para
+comparar de novo, o padrão que funcionou foi publicar as duas em paralelo
+(`/lp/<slug>` e `/lp/<slug>-codex` ou equivalente) e decidir antes de apagar a
+que não foi escolhida.
 
 ## Fora de escopo
 

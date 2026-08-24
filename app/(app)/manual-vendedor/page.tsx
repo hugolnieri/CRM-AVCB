@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Card,
@@ -13,8 +14,17 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
-import { IconChevronRight, IconExternalLink, IconPaperclip, IconSearch } from "@tabler/icons-react";
+import { useClipboard } from "@mantine/hooks";
+import {
+  IconCheck,
+  IconChevronRight,
+  IconCopy,
+  IconExternalLink,
+  IconPaperclip,
+  IconSearch,
+} from "@tabler/icons-react";
 import { useTiposServico } from "@/hooks/useServicos";
 import { useMateriaisVenda } from "@/hooks/useMateriaisVenda";
 import { MateriaisLista } from "@/components/shared/MateriaisVenda";
@@ -174,15 +184,37 @@ function SecaoCategoria({
  * `slug` em `tipos_servico`, e não vale criar schema para um piloto que ainda
  * está sendo avaliado. Sigla sem entrada aqui simplesmente não mostra o link.
  */
-const APRESENTACOES_POR_SIGLA: Record<string, { href: string; rotulo: string }[]> = {
-  "NR-35": [
-    { href: "/lp/nr-35", rotulo: "Abrir apresentação para o cliente — versão Claude" },
-    { href: "/lp/nr-35-codex", rotulo: "Abrir apresentação para o cliente — versão Codex" },
-  ],
+const APRESENTACOES_POR_SIGLA: Record<string, { href: string; rotulo: string }> = {
+  "NR-35": { href: "/lp/nr-35", rotulo: "Apresentação para o cliente" },
 };
 
+/**
+ * Copia a URL absoluta, não o caminho: o que vai para o WhatsApp precisa
+ * funcionar colado direto, sem o vendedor completar o domínio de cabeça.
+ * `useClipboard` já cobre o navegador sem `navigator.clipboard` (contexto sem
+ * HTTPS), que é o motivo de não chamar a API direto aqui.
+ */
+function BotaoCopiarLink({ href }: { href: string }) {
+  const clipboard = useClipboard({ timeout: 2000 });
+  const url = typeof window !== "undefined" ? `${window.location.origin}${href}` : href;
+
+  return (
+    <Tooltip label={clipboard.copied ? "Copiado!" : "Copiar link"} withArrow>
+      <ActionIcon
+        variant={clipboard.copied ? "light" : "subtle"}
+        color={clipboard.copied ? "teal" : "gray"}
+        size="sm"
+        onClick={() => clipboard.copy(url)}
+        aria-label="Copiar link da apresentação"
+      >
+        {clipboard.copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
 function DetalheTipo({ tipo, materiais }: { tipo: TipoServico; materiais: MaterialVenda[] }) {
-  const apresentacoes = tipo.sigla ? APRESENTACOES_POR_SIGLA[tipo.sigla] : undefined;
+  const apresentacao = tipo.sigla ? APRESENTACOES_POR_SIGLA[tipo.sigla] : undefined;
   const semNada = !tipo.materialVenda && materiais.length === 0;
 
   return (
@@ -224,17 +256,19 @@ function DetalheTipo({ tipo, materiais }: { tipo: TipoServico; materiais: Materi
         </Text>
       )}
 
-      {apresentacoes && (
-        <Stack gap={4}>
-          {apresentacoes.map((apresentacao) => (
-            <Anchor key={apresentacao.href} href={apresentacao.href} target="_blank" size="sm">
+      {apresentacao && (
+        <>
+          <Divider />
+          <Group justify="space-between" wrap="nowrap" gap="xs">
+            <Anchor href={apresentacao.href} target="_blank" size="sm">
               <Group gap={4} wrap="nowrap">
                 <IconExternalLink size={14} />
                 {apresentacao.rotulo}
               </Group>
             </Anchor>
-          ))}
-        </Stack>
+            <BotaoCopiarLink href={apresentacao.href} />
+          </Group>
+        </>
       )}
     </Stack>
   );
